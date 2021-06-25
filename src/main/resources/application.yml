@@ -1,0 +1,16 @@
+server:
+  servlet:
+    context-path: /harbor
+spring:
+  application:
+    name: harbor
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+  jackson:
+    serialization:
+      write-dates-as-timestamps: true
+eureka:
+  instance:
+    prefer-ip-address: true

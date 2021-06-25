@@ -1,0 +1,9 @@
+server:
+  port: 8088
+spring:
+  datasource:
+    url: jdbc:h2:file:./db
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.2.30:8761/eureka/
