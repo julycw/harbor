@@ -1,11 +1,13 @@
 package julyww.harbor.core
 
 import com.github.dockerjava.api.DockerClient
+import julyww.harbor.common.MD5Util
 import julyww.harbor.common.PageResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import org.apache.commons.codec.digest.Md5Crypt
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.springframework.data.jpa.repository.JpaRepository
@@ -15,6 +17,8 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.util.StringUtils
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.exchange
 import java.io.ByteArrayInputStream
@@ -28,6 +32,7 @@ import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
+import kotlin.io.path.readBytes
 
 @Entity
 class AppEntity(
@@ -40,6 +45,9 @@ class AppEntity(
 
     @Column
     var containerId: String?,
+
+    @Column
+    var md5: String?,
 
     @Column
     var downloadAppUrl: String?,
@@ -145,8 +153,13 @@ class AppManageService(
             GlobalScope.launch { // 在后台启动一个新的协程并继续
                 try {
                     val asyncForDownloadFile = async(context = Dispatchers.IO) {
-                        val response: ResponseEntity<ByteArray> =
-                            restTemplate.exchange(downloadUrl, HttpMethod.GET, httpRequest, ByteArray::class)
+                        val response: ResponseEntity<ByteArray> = restTemplate.exchange(
+                            downloadUrl,
+                            HttpMethod.GET,
+                            httpRequest,
+                            ByteArray::class
+                        )
+                        it.md5 = MD5Util.md5(response.body!!)
                         if (downloadUrl.endsWith(".tar")) {
                             tarUnarchive(response.body!!, localPath)
                         } else {
@@ -158,10 +171,10 @@ class AppManageService(
                                 StandardOpenOption.TRUNCATE_EXISTING
                             )
                         }
+                        it.latestUpdateTime = Date()
                     }
                     asyncForDownloadFile.await()
                     restart(id)
-                    it.latestUpdateTime = Date()
                     appRepository.save(it)
                 } finally {
                     appUpdateState.remove(id)
