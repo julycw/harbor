@@ -174,8 +174,8 @@ class AppManageService(
                         it.latestUpdateTime = Date()
                     }
                     asyncForDownloadFile.await()
-                    restart(id)
                     appRepository.save(it)
+                    restart(id)
                 } finally {
                     appUpdateState.remove(id)
                 }
