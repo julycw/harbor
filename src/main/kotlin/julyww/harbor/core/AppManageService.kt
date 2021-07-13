@@ -3,14 +3,12 @@ package julyww.harbor.core
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.model.Frame
-import com.github.dockerjava.core.command.LogContainerResultCallback
 import julyww.harbor.common.MD5Util
 import julyww.harbor.common.PageResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import org.apache.commons.codec.digest.Md5Crypt
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.springframework.data.jpa.repository.JpaRepository
@@ -20,8 +18,6 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
-import org.springframework.util.StringUtils
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.exchange
 import java.io.ByteArrayInputStream
@@ -35,7 +31,6 @@ import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.Id
-import kotlin.io.path.readBytes
 
 @Entity
 class AppEntity(
@@ -112,15 +107,20 @@ class AppManageService(
         appRepository.deleteById(id)
     }
 
-    fun log(id: Long, tail: Int = 500, since: Date? = null): List<String> {
+    fun log(id: Long, tail: Int = 500, since: Date? = null, withTimestamps: Boolean = false): List<String> {
         val logs: MutableList<String> = mutableListOf()
         appRepository.findByIdOrNull(id)?.let {
             it.containerId?.let { containerId ->
                 if (containerId.isNotBlank()) {
                     var cmd = dockerClient.logContainerCmd(containerId)
-                    cmd = cmd.withTail(tail)
+                        .withTail(tail)
+                        .withStdOut(true)
+                        .withStdErr(true)
                     since?.let {
                         cmd = cmd.withSince((since.time / 1000).toInt())
+                    }
+                    if (withTimestamps) {
+                        cmd = cmd.withTimestamps(true)
                     }
                     try {
                         cmd.exec(object : ResultCallback.Adapter<Frame>() {

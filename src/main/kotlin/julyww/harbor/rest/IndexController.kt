@@ -68,9 +68,15 @@ class IndexController(
     fun getAppLogs(
         @PathVariable id: Long,
         @RequestParam(required = false) since: Long?,
-        @RequestParam(required = false, defaultValue = "500") tail: Int
+        @RequestParam(required = false, defaultValue = "500") tail: Int,
+        @RequestParam(required = false, defaultValue = "false") withTimestamps: Boolean
     ): List<String> {
-        return appManageService.log(id, tail = tail, since = since?.let { Date(it) })
+        return appManageService.log(
+            id,
+            tail = tail,
+            since = since?.let { Date(it) },
+            withTimestamps = withTimestamps
+        )
     }
 
     @WriteLedger(description = "启动应用模块", targetId = "#id", targetType = AppEntity::class)
