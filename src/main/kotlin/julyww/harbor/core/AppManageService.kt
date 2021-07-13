@@ -1,6 +1,9 @@
 package julyww.harbor.core
 
 import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.async.ResultCallback
+import com.github.dockerjava.api.model.Frame
+import com.github.dockerjava.core.command.LogContainerResultCallback
 import julyww.harbor.common.MD5Util
 import julyww.harbor.common.PageResult
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +110,31 @@ class AppManageService(
 
     fun delete(id: Long) {
         appRepository.deleteById(id)
+    }
+
+    fun log(id: Long, tail: Int = 500, since: Date? = null): List<String> {
+        val logs: MutableList<String> = mutableListOf()
+        appRepository.findByIdOrNull(id)?.let {
+            it.containerId?.let { containerId ->
+                if (containerId.isNotBlank()) {
+                    var cmd = dockerClient.logContainerCmd(containerId)
+                    cmd = cmd.withTail(tail)
+                    since?.let {
+                        cmd = cmd.withSince((since.time / 1000).toInt())
+                    }
+                    try {
+                        cmd.exec(object : ResultCallback.Adapter<Frame>() {
+                            override fun onNext(frame: Frame) {
+                                logs.add(frame.toString())
+                            }
+                        }).awaitCompletion()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
+        return logs
     }
 
     fun start(id: Long) {

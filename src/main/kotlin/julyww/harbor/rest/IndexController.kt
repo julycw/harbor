@@ -12,6 +12,7 @@ import julyww.harbor.remote.SystemModuleList
 import julyww.harbor.remote.SystemModuleManage
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import java.util.*
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -59,6 +60,17 @@ class IndexController(
     @DeleteMapping("app/{id}")
     fun deleteApp(@PathVariable id: Long) {
         return appManageService.delete(id)
+    }
+
+    @WriteLedger(description = "查询应用日志信息", targetId = "#id", targetType = AppEntity::class)
+    @RequiresPermissions(SystemModuleManage)
+    @GetMapping("app/{id}/logs")
+    fun getAppLogs(
+        @PathVariable id: Long,
+        @RequestParam(required = false) since: Long?,
+        @RequestParam(required = false, defaultValue = "500") tail: Int
+    ): List<String> {
+        return appManageService.log(id, tail = tail, since = since?.let { Date(it) })
     }
 
     @WriteLedger(description = "启动应用模块", targetId = "#id", targetType = AppEntity::class)
