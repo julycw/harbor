@@ -4,10 +4,7 @@ import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
 import cn.trustway.nb.common.auth.annotation.auth.RequiresPermissions
 import cn.trustway.nb.common.auth.annotation.ledger.WriteLedger
 import julyww.harbor.common.PageResult
-import julyww.harbor.core.AppEntity
-import julyww.harbor.core.AppManageService
-import julyww.harbor.core.Container
-import julyww.harbor.core.ContainerService
+import julyww.harbor.core.*
 import julyww.harbor.remote.SystemModuleList
 import julyww.harbor.remote.SystemModuleManage
 import org.springframework.http.HttpStatus
@@ -44,7 +41,7 @@ class IndexController(
 
     @RequiresPermissions(SystemModuleList)
     @GetMapping("app")
-    fun listApp(): PageResult<AppEntity> {
+    fun listApp(): PageResult<AppDTO> {
         return appManageService.list()
     }
 

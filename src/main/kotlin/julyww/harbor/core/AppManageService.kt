@@ -70,6 +70,20 @@ interface AppRepository : JpaRepository<AppEntity, Long>
 
 val appUpdateState: MutableSet<Long> = Collections.synchronizedSet(mutableSetOf())
 
+data class AppDTO(
+    var id: Long?,
+    var name: String,
+    var containerId: String?,
+    var md5: String?,
+    var downloadAppUrl: String?,
+    var localAppPath: String?,
+    var basicAuthUsername: String?,
+    var basicAuthPassword: String?,
+    var version: String?,
+    var latestUpdateTime: Date?,
+    var remoteMd5: String?
+)
+
 @Service
 class AppManageService(
     private val appRepository: AppRepository,
@@ -78,10 +92,24 @@ class AppManageService(
 
     private val restTemplate = RestTemplate()
 
-    fun list(): PageResult<AppEntity> {
+    fun list(): PageResult<AppDTO> {
         val list = appRepository.findAll()
         return PageResult(
-            list = list,
+            list = list.map {
+                AppDTO(
+                    id = it.id,
+                    name = it.name,
+                    containerId = it.containerId,
+                    md5 = it.md5,
+                    downloadAppUrl = it.downloadAppUrl,
+                    localAppPath = it.localAppPath,
+                    basicAuthUsername = it.basicAuthUsername,
+                    basicAuthPassword = it.basicAuthPassword,
+                    version = it.version,
+                    latestUpdateTime = it.latestUpdateTime,
+                    remoteMd5 = remoteMd5(it),
+                )
+            },
             total = list.size
         )
     }
@@ -208,6 +236,26 @@ class AppManageService(
                     appUpdateState.remove(id)
                 }
             }
+        }
+    }
+
+    fun remoteMd5(appEntity: AppEntity): String? {
+        val downloadUrl = appEntity.downloadAppUrl ?: return null
+        val md5Url = "$downloadUrl.md5"
+        val httpRequest: HttpEntity<Void> =
+            HttpEntity(basicAuth(appEntity.basicAuthUsername ?: "", appEntity.basicAuthPassword ?: ""))
+        return try {
+            val response: ResponseEntity<String> = restTemplate.exchange(
+                md5Url,
+                HttpMethod.GET,
+                httpRequest,
+                String::class
+            )
+            response.body?.let {
+                if (it.length >= 32) it.substring(0, 32) else null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
