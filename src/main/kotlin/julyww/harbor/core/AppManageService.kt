@@ -17,6 +17,7 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
+import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.exchange
@@ -90,7 +91,12 @@ class AppManageService(
     private val dockerClient: DockerClient
 ) {
 
-    private val restTemplate = RestTemplate()
+    private val restTemplate = let {
+        val factory = SimpleClientHttpRequestFactory()
+        factory.setConnectTimeout(3000)
+        factory.setReadTimeout(5 * 60 * 1000)
+        RestTemplate(factory)
+    }
 
     fun list(): PageResult<AppDTO> {
         val list = appRepository.findAll()

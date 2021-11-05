@@ -90,6 +90,13 @@ class IndexController(
         appManageService.stop(id)
     }
 
+    @WriteLedger(description = "重启应用模块", targetId = "#id", targetType = AppEntity::class)
+    @RequiresPermissions(SystemModuleManage)
+    @PostMapping("app/{id}/restart")
+    fun restartApp(@PathVariable id: Long) {
+        appManageService.restart(id)
+    }
+
     @WriteLedger(description = "更新应用模块", targetId = "#id", targetType = AppEntity::class)
     @RequiresPermissions(SystemModuleManage)
     @PostMapping("app/{id}/update")
