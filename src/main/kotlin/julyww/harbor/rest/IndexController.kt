@@ -177,6 +177,8 @@ class HostController(
         return hostService.delete(id)
     }
 
+
+    @WriteLedger(description = "远程连接服务器", targetId = "#id", targetType = HostEntity::class)
     @ApiOperation("连接服务器, 返回session id")
     @RequiresPermissions(SystemHostManage)
     @PostMapping("{id}/session")
