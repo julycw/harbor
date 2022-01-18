@@ -184,12 +184,16 @@ class HostController(
     @PostMapping("{id}/session")
     fun createSession(@PathVariable id: Long): String {
         return hostService.findById(id)?.let { host ->
-            sshSessionManager.createSession(
-                username = host.username ?: throw error("必须先配置登陆用户名"),
-                password = host.password ?: throw error("必须先配置登陆密码"),
-                host = host.ip ?: throw error("必须先配置IP地址"),
-                port = host.port ?: 22
-            ).sessionId
+            try {
+                sshSessionManager.createSession(
+                    username = host.username ?: throw error("必须先配置登陆用户名"),
+                    password = host.password ?: throw error("必须先配置登陆密码"),
+                    host = host.ip ?: throw error("必须先配置IP地址"),
+                    port = host.port ?: 22
+                ).sessionId
+            } catch (e: Exception) {
+                throw error(e.message ?: e.javaClass.name)
+            }
         } ?: throw error("未找到相关配置")
     }
 
