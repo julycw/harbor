@@ -1,6 +1,7 @@
 server:
   servlet:
     context-path: /harbor
+  shutdown: graceful
 spring:
   application:
     name: harbor

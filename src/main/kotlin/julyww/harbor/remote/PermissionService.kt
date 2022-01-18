@@ -21,6 +21,8 @@ interface PermissionService {
 
 const val SystemModuleList = "system:app-module:list"
 const val SystemModuleManage = "system:app-module:manage"
+const val SystemHostList = "system:host:list"
+const val SystemHostManage = "system:host:manage"
 const val SystemSection = "系统管理"
 
 @Component
@@ -38,7 +40,18 @@ class PermissionInitializer(
                 Permission.of(SystemModuleManage, "应用功能模块控制",
                     SystemSection, "系统管理", RoleType.System, PermissionOptions.defaults().apply {
                         isRegular = false
-                    })
+                    }
+                ),
+                Permission.of(
+                    SystemHostList, "服务器列表查看",
+                    SystemSection, "系统管理", RoleType.System, PermissionOptions.defaults()
+                ),
+                Permission.of(
+                    SystemHostManage, "服务器信息管理",
+                    SystemSection, "系统管理", RoleType.System, PermissionOptions.defaults().apply {
+                        isRegular = false
+                    }
+                )
             )
         )
     }

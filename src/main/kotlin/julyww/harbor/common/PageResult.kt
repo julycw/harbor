@@ -1,6 +1,6 @@
 package julyww.harbor.common
 
 data class PageResult<T>(
-    val total: Int,
+    val total: Long,
     val list: List<T>
 )

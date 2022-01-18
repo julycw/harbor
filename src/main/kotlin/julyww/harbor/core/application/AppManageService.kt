@@ -1,17 +1,20 @@
-package julyww.harbor.core
+package julyww.harbor.core.application
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.model.Frame
 import julyww.harbor.common.MD5Util
 import julyww.harbor.common.PageResult
+import julyww.harbor.persist.IdGenerator
+import julyww.harbor.persist.app.AppEntity
+import julyww.harbor.persist.app.AppRepository
+import julyww.harbor.utils.CommonUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -28,46 +31,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.util.*
-import javax.persistence.Column
-import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.Id
 
-@Entity
-class AppEntity(
-    @Id
-    @GeneratedValue
-    var id: Long?,
-
-    @Column
-    var name: String,
-
-    @Column
-    var containerId: String?,
-
-    @Column
-    var md5: String?,
-
-    @Column
-    var downloadAppUrl: String?,
-
-    @Column
-    var localAppPath: String?,
-
-    @Column
-    var basicAuthUsername: String?,
-
-    @Column
-    var basicAuthPassword: String?,
-
-    @Column
-    var version: String?,
-
-    @Column
-    var latestUpdateTime: Date?
-)
-
-interface AppRepository : JpaRepository<AppEntity, Long>
 
 val appUpdateState: MutableSet<Long> = Collections.synchronizedSet(mutableSetOf())
 
@@ -88,13 +52,14 @@ data class AppDTO(
 @Service
 class AppManageService(
     private val appRepository: AppRepository,
-    private val dockerClient: DockerClient
+    private val dockerClient: DockerClient,
+    private val idGenerator: IdGenerator
 ) {
 
     private val restTemplate = let {
         val factory = SimpleClientHttpRequestFactory()
         factory.setConnectTimeout(3000)
-        factory.setReadTimeout(5 * 60 * 1000)
+        factory.setReadTimeout(2 * 60 * 1000)
         RestTemplate(factory)
     }
 
@@ -116,15 +81,17 @@ class AppManageService(
                     remoteMd5 = remoteMd5(it),
                 )
             },
-            total = list.size
+            total = appRepository.count()
         )
     }
 
     fun save(entity: AppEntity): Long? {
-        return if (entity.id == null) {
+        val targetId = entity.id
+        return if (targetId == null) {
+            entity.id = idGenerator.next()
             appRepository.save(entity).id
         } else {
-            appRepository.findByIdOrNull(entity.id!!)?.let {
+            appRepository.findByIdOrNull(targetId)?.let {
                 it.name = entity.name
                 it.containerId = entity.containerId
                 it.downloadAppUrl = entity.downloadAppUrl
@@ -132,6 +99,9 @@ class AppManageService(
                 it.basicAuthUsername = entity.basicAuthUsername
                 it.basicAuthPassword = entity.basicAuthPassword
                 appRepository.save(it)
+            } ?: let {
+                entity.id = idGenerator.next()
+                appRepository.save(entity).id
             }
             entity.id
         }
@@ -206,7 +176,7 @@ class AppManageService(
             val downloadUrl = it.downloadAppUrl ?: throw error("未设定下载地址")
             val localPath = it.localAppPath ?: throw error("未设定部署地址")
             val httpRequest: HttpEntity<Void> =
-                HttpEntity(basicAuth(it.basicAuthUsername ?: "", it.basicAuthPassword ?: ""))
+                HttpEntity(CommonUtils.basicAuth(it.basicAuthUsername ?: "", it.basicAuthPassword ?: ""))
 
             if (appUpdateState.contains(id)) {
                 throw error("正在更新，请勿重复操作")
@@ -223,7 +193,7 @@ class AppManageService(
                         )
                         it.md5 = MD5Util.md5(response.body!!)
                         if (downloadUrl.endsWith(".tar")) {
-                            tarUnarchive(response.body!!, localPath)
+                            CommonUtils.tarUnarchive(response.body!!, localPath)
                         } else {
                             Files.write(
                                 Path.of(localPath),
@@ -249,7 +219,7 @@ class AppManageService(
         val downloadUrl = appEntity.downloadAppUrl ?: return null
         val md5Url = "$downloadUrl.md5"
         val httpRequest: HttpEntity<Void> =
-            HttpEntity(basicAuth(appEntity.basicAuthUsername ?: "", appEntity.basicAuthPassword ?: ""))
+            HttpEntity(CommonUtils.basicAuth(appEntity.basicAuthUsername ?: "", appEntity.basicAuthPassword ?: ""))
         return try {
             val response: ResponseEntity<String> = restTemplate.exchange(
                 md5Url,
@@ -262,40 +232,6 @@ class AppManageService(
             }
         } catch (e: Exception) {
             null
-        }
-    }
-
-    fun basicAuth(username: String, password: String): HttpHeaders {
-        return object : HttpHeaders() {
-            init {
-                val auth = "$username:$password"
-                val encodedAuth: ByteArray = Base64.getEncoder().encode(auth.toByteArray())
-                val authHeader = "Basic " + String(encodedAuth)
-                set("Authorization", authHeader)
-            }
-        }
-    }
-
-    fun tarUnarchive(file: ByteArray, outputDir: String) {
-        ByteArrayInputStream(file).use { fileInputStream ->
-            val tarArchiveInputStream = TarArchiveInputStream(fileInputStream)
-            var entry: TarArchiveEntry? = null
-            while (tarArchiveInputStream.nextTarEntry?.also { entry = it } != null) {
-                if (entry!!.isDirectory) {
-                    continue
-                }
-                val outputFile = File(Paths.get(outputDir, entry!!.name).toUri())
-                if (!outputFile.parentFile.exists()) {
-                    outputFile.parentFile.mkdirs()
-                }
-                Files.write(
-                    outputFile.toPath(),
-                    tarArchiveInputStream.readAllBytes(),
-                    StandardOpenOption.WRITE,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-                )
-            }
         }
     }
 
