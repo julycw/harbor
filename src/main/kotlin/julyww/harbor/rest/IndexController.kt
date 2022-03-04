@@ -87,7 +87,6 @@ class AppController(
     }
 
     @ApiOperation("查询应用日志信息")
-    @WriteLedger(description = "查询应用日志信息", targetId = "#id", targetType = AppEntity::class)
     @RequiresPermissions(SystemModuleManage)
     @GetMapping("{id}/logs")
     fun getAppLogs(
