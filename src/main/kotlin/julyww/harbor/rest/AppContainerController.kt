@@ -9,6 +9,7 @@ import io.swagger.annotations.ApiOperation
 import julyww.harbor.common.PageResult
 import julyww.harbor.core.application.AppDTO
 import julyww.harbor.core.application.AppManageService
+import julyww.harbor.core.application.AppQueryBean
 import julyww.harbor.core.container.Container
 import julyww.harbor.core.container.ContainerService
 import julyww.harbor.persist.app.AppEntity
@@ -52,8 +53,8 @@ class AppController(
     @ApiOperation("分页查询应用列表")
     @RequiresPermissions(SystemModuleList)
     @GetMapping
-    fun listApp(): PageResult<AppDTO> {
-        return appManageService.list()
+    fun listApp(query: AppQueryBean): PageResult<AppDTO> {
+        return appManageService.list(query)
     }
 
     @ApiOperation("新增/修改应用模块信息")

@@ -78,7 +78,7 @@ class AppManageService(
         var list = appRepository.findAll()
         if (query.filterByContainerExist) {
             val containers = containerService.list().map { it.id }.toSet()
-            list = list.filter { containers.contains(it.containerId) }
+            list = list.filter { it.containerId.isNullOrBlank() || containers.contains(it.containerId) }
         }
         return PageResult(
             list = list.map {
