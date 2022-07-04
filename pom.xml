@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.3</version>
+        <version>2.6.9</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>julyww</groupId>
@@ -15,10 +15,10 @@
     <description>Demo project for Spring Boot</description>
     <properties>
         <java.version>11</java.version>
-        <kotlin.version>1.5.0</kotlin.version>
-        <auth.version>1.0.24</auth.version>
-        <spring-cloud.version>2020.0.3</spring-cloud.version>
-        <docker-java.version>3.2.12</docker-java.version>
+        <kotlin.version>1.6.21</kotlin.version>
+        <auth.version>1.0.28</auth.version>
+        <spring-cloud.version>2021.0.3</spring-cloud.version>
+        <docker-java.version>3.2.13</docker-java.version>
         <jsch.version>0.1.55</jsch.version>
     </properties>
     <dependencies>
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-core</artifactId>
-            <version>${kotlin.version}</version>
+            <version>1.5.0</version>
         </dependency>
         <dependency>
             <groupId>com.github.xiaoymin</groupId>

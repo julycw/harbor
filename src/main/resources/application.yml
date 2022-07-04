@@ -10,6 +10,9 @@ spring:
       write-dates-as-timestamps: true
   lifecycle:
     timeout-per-shutdown-phase: 15s
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
 eureka:
   instance:
     prefer-ip-address: true

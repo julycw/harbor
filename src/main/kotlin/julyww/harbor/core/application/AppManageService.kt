@@ -173,13 +173,13 @@ class AppManageService(
 
     fun update(id: Long) {
         appRepository.findByIdOrNull(id)?.let {
-            val downloadUrl = it.downloadAppUrl ?: throw error("未设定下载地址")
-            val localPath = it.localAppPath ?: throw error("未设定部署地址")
+            val downloadUrl = it.downloadAppUrl ?: error("未设定下载地址")
+            val localPath = it.localAppPath ?: error("未设定部署地址")
             val httpRequest: HttpEntity<Void> =
                 HttpEntity(CommonUtils.basicAuth(it.basicAuthUsername ?: "", it.basicAuthPassword ?: ""))
 
             if (appUpdateState.contains(id)) {
-                throw error("正在更新，请勿重复操作")
+                error("正在更新，请勿重复操作")
             }
             appUpdateState.add(id)
             GlobalScope.launch { // 在后台启动一个新的协程并继续

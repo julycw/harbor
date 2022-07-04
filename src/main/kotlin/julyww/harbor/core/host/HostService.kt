@@ -18,6 +18,11 @@ class HostService(
         return hostRepository.findByIdOrNull(id)
     }
 
+
+    fun findByIP(ip: String): HostEntity? {
+        return hostRepository.findFirstByIp(ip)
+    }
+
     fun list(): PageResult<HostEntity> {
         val list = hostRepository.findAll()
         return PageResult(
