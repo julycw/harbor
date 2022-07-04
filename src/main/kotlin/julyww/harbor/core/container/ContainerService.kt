@@ -4,10 +4,6 @@ import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.model.Statistics
 import org.springframework.stereotype.Service
-import java.io.Closeable
-import java.time.Duration
-import java.util.*
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 
@@ -19,33 +15,17 @@ data class Container(
     val state: String
 )
 
-class StatsResultReceiver: ResultCallback<Statistics> {
+class StatsResultReceiver : ResultCallback.Adapter<Statistics>() {
 
-    private val countDownLatch = CountDownLatch(1)
     private var stats: MutableList<Statistics> = mutableListOf()
 
     override fun onNext(data: Statistics) {
         stats.add(data)
     }
 
-    override fun close() {
-    }
-
-    override fun onStart(closeable: Closeable?) {
-    }
-
-    override fun onError(throwable: Throwable?) {
-    }
-
-    override fun onComplete() {
-        countDownLatch.countDown()
-    }
-
-    fun getStats(waitMilliSeconds: Long): List<Statistics> {
-        if (countDownLatch.await(waitMilliSeconds, TimeUnit.MILLISECONDS)) {
-            return stats
-        }
-        return emptyList()
+    fun getStats(waitMilliSeconds: Long): MutableList<Statistics> {
+        awaitCompletion(waitMilliSeconds, TimeUnit.MILLISECONDS)
+        return stats
     }
 }
 
@@ -69,7 +49,8 @@ class ContainerService(
     fun stats(containerId: String): List<Statistics> {
         return dockerClient.statsCmd(containerId)
             .withNoStream(true)
-            .exec(StatsResultReceiver()).getStats(10000)
+            .exec(StatsResultReceiver())
+            .getStats(10000)
     }
 
 }

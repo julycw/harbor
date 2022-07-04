@@ -3,8 +3,11 @@ package julyww.harbor.core.application
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.model.Frame
+import io.swagger.annotations.ApiModel
+import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.common.MD5Util
 import julyww.harbor.common.PageResult
+import julyww.harbor.core.container.ContainerService
 import julyww.harbor.persist.IdGenerator
 import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.persist.app.AppRepository
@@ -49,10 +52,18 @@ data class AppDTO(
     var remoteMd5: String?
 )
 
+@ApiModel
+class AppQueryBean {
+
+    @ApiModelProperty("是否基于container是否存在来进行过滤")
+    var filterByContainerExist: Boolean = true
+}
+
 @Service
 class AppManageService(
     private val appRepository: AppRepository,
     private val dockerClient: DockerClient,
+    private val containerService: ContainerService,
     private val idGenerator: IdGenerator
 ) {
 
@@ -63,8 +74,12 @@ class AppManageService(
         RestTemplate(factory)
     }
 
-    fun list(): PageResult<AppDTO> {
-        val list = appRepository.findAll()
+    fun list(query: AppQueryBean): PageResult<AppDTO> {
+        var list = appRepository.findAll()
+        if (query.filterByContainerExist) {
+            val containers = containerService.list().map { it.id }.toSet()
+            list = list.filter { containers.contains(it.containerId) }
+        }
         return PageResult(
             list = list.map {
                 AppDTO(
