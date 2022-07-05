@@ -16,3 +16,19 @@ spring:
 eureka:
   instance:
     prefer-ip-address: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,httptrace,info,loggers,metrics
+  endpoint:
+    health:
+      enabled: true
+    httptrace:
+      enabled: true
+    info:
+      enabled: true
+    loggers:
+      enabled: true
+    metrics:
+      enabled: true
