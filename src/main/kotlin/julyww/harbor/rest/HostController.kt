@@ -22,7 +22,7 @@ data class OutputBound(
     val content: String
 )
 
-
+@RequiresPermissions
 @Api(tags = ["主机管理"])
 @RequestMapping("/host")
 @RestController
@@ -82,6 +82,7 @@ class HostController(
         } ?: error("未找到相关配置")
     }
 
+    @RequiresPermissions(SystemHostManage)
     @ApiOperation("打开SSH会话", notes = "该接口为SSE接口，数据包内容为Stdout/Stderr内容")
     @GetMapping("ssh-session/{id}/ssh")
     fun createSshChannel(@PathVariable id: String): ResponseEntity<SseEmitter> {
