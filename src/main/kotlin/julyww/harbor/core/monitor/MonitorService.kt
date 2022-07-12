@@ -11,6 +11,7 @@ open class Server(
 )
 
 class Application(
+    val id : String,
     val name: String,
     val instances: List<ApplicationInstance>
 )
@@ -18,15 +19,16 @@ class Application(
 class ApplicationInstance(
     host: String,
     ip: String,
+    val id: String,
     val port: Int,
     val lastUpdated: Date,
-    val status: InstanceStatus
+    val status: InstanceStatus,
+    val baseURL: String,
+    val version: String
 ) : Server(
     host = host,
     ip = ip
-) {
-
-}
+)
 
 @Service
 class MonitorService(
@@ -68,14 +70,19 @@ class MonitorService(
 
     private fun convert(app: com.netflix.discovery.shared.Application): Application {
         return Application(
+            id = app.name,
             name = app.name,
             instances = app.instances.map {
                 ApplicationInstance(
+                    id = it.id,
                     host = it.hostName,
                     ip = it.ipAddr,
                     port = it.port,
                     lastUpdated = Date(it.lastUpdatedTimestamp),
-                    status = it.status
+                    status = it.status,
+                    baseURL = "/" + (it.healthCheckUrl?.removePrefix(it.homePageUrl)?.removeSuffix("actuator/health")
+                        ?.removeSuffix("/") ?: ""),
+                    version = it.version
                 )
             }
         )
