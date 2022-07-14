@@ -28,7 +28,9 @@ data class AppEntity(
 
     var version: String?,
 
-    var latestUpdateTime: Date?
+    var latestUpdateTime: Date?,
+
+    var autoRestart: Boolean = true
 )
 
 interface AppRepository : PagingAndSortingRepository<AppEntity, Long>

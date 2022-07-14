@@ -222,7 +222,9 @@ class AppManageService(
                     }
                     asyncForDownloadFile.await()
                     appRepository.save(it)
-                    restart(id)
+                    if (it.autoRestart) {
+                        restart(id)
+                    }
                 } finally {
                     appUpdateState.remove(id)
                 }

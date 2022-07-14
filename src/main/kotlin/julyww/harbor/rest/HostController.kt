@@ -86,15 +86,14 @@ class HostController(
     @ApiOperation("打开SSH会话", notes = "该接口为SSE接口，数据包内容为Stdout/Stderr内容")
     @GetMapping("ssh-session/{id}/ssh")
     fun createSshChannel(@PathVariable id: String): ResponseEntity<SseEmitter> {
+        val session = sshSessionManager.getSession(id) ?: error("session not exist")
         val emitter = SseEmitter(0L)
-        sshSessionManager.getSession(id)?.let { session ->
-            emitter.onCompletion {
-                sshSessionManager.closeSession(session.sessionId)
-            }
-            session.openShellChannel { msg ->
-                emitter.send(OutputBound(msg))
-            }
-        } ?: error("session not exist")
+        emitter.onCompletion {
+            sshSessionManager.closeSession(session.sessionId)
+        }
+        session.openShellChannel { msg ->
+            emitter.send(OutputBound(msg))
+        }
         return ResponseEntity.ok().header("X-Accel-Buffering", "no").body(emitter)
     }
 
