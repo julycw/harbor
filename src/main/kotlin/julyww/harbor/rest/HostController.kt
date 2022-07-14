@@ -94,7 +94,7 @@ class HostController(
             session.openShellChannel { msg ->
                 emitter.send(OutputBound(msg))
             }
-        }
+        } ?: error("session not exist")
         return ResponseEntity.ok().header("X-Accel-Buffering", "no").body(emitter)
     }
 
