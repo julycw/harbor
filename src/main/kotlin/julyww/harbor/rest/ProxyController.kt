@@ -7,10 +7,11 @@ import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import julyww.harbor.rest.global.TargetNotRegisteredException
 import org.springframework.cloud.gateway.mvc.ProxyExchange
-import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.util.StringUtils
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.util.UriComponentsBuilder
+import java.net.URI
 import javax.servlet.http.HttpServletRequest
 
 data class IPAndPort(
@@ -31,7 +32,7 @@ class ActuatorProxyController(
     fun proxyGet(httpServletRequest: HttpServletRequest, proxy: ProxyExchange<ByteArray>): ResponseEntity<*> {
         val (ip, port) = targetIpAndPort(httpServletRequest)
         val path = proxy.path("/proxy/")
-        return proxy.sensitive().uri("http://$ip:$port/$path").get()
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).get()
     }
 
     @ApiOperation("Proxy Post")
@@ -39,7 +40,7 @@ class ActuatorProxyController(
     fun proxyPost(httpServletRequest: HttpServletRequest, proxy: ProxyExchange<ByteArray>): ResponseEntity<*> {
         val (ip, port) = targetIpAndPort(httpServletRequest)
         val path = proxy.path("/proxy/")
-        return proxy.sensitive().uri("http://$ip:$port/$path").post()
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).post()
     }
 
     @ApiOperation("Proxy Put")
@@ -47,7 +48,7 @@ class ActuatorProxyController(
     fun proxyPut(httpServletRequest: HttpServletRequest, proxy: ProxyExchange<ByteArray>): ResponseEntity<*> {
         val (ip, port) = targetIpAndPort(httpServletRequest)
         val path = proxy.path("/proxy/")
-        return proxy.sensitive().uri("http://$ip:$port/$path").put()
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).put()
     }
 
     @ApiOperation("Proxy Delete")
@@ -55,14 +56,71 @@ class ActuatorProxyController(
     fun proxyDelete(httpServletRequest: HttpServletRequest, proxy: ProxyExchange<ByteArray>): ResponseEntity<*> {
         val (ip, port) = targetIpAndPort(httpServletRequest)
         val path = proxy.path("/proxy/")
-        return proxy.sensitive().uri("http://$ip:$port/$path").delete()
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).delete()
+    }
+
+    @ApiOperation("Proxy Get")
+    @GetMapping("/{instanceId}/**")
+    fun proxyGetEx(
+        @PathVariable instanceId: String,
+        httpServletRequest: HttpServletRequest,
+        proxy: ProxyExchange<ByteArray>
+    ): ResponseEntity<*> {
+        val (ip, port) = targetIpAndPort(instanceId)
+        val path = proxy.path("/proxy/${instanceId}/")
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).get()
+    }
+
+    @ApiOperation("Proxy Post")
+    @PostMapping("/{instanceId}/**")
+    fun proxyPostEx(
+        @PathVariable instanceId: String,
+        httpServletRequest: HttpServletRequest,
+        proxy: ProxyExchange<ByteArray>
+    ): ResponseEntity<*> {
+        val (ip, port) = targetIpAndPort(instanceId)
+        val path = proxy.path("/proxy/${instanceId}/")
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).post()
+    }
+
+    @ApiOperation("Proxy Put")
+    @PutMapping("/{instanceId}/**")
+    fun proxyPutEx(
+        @PathVariable instanceId: String,
+        httpServletRequest: HttpServletRequest,
+        proxy: ProxyExchange<ByteArray>
+    ): ResponseEntity<*> {
+        val (ip, port) = targetIpAndPort(instanceId)
+        val path = proxy.path("/proxy/${instanceId}/")
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).put()
+    }
+
+    @ApiOperation("Proxy Delete")
+    @DeleteMapping("/{instanceId}/**")
+    fun proxyDeleteEx(
+        @PathVariable instanceId: String,
+        httpServletRequest: HttpServletRequest,
+        proxy: ProxyExchange<ByteArray>
+    ): ResponseEntity<*> {
+        val (ip, port) = targetIpAndPort(instanceId)
+        val path = proxy.path("/proxy/${instanceId}/")
+        return proxy.sensitive().uri(convertUri(httpServletRequest, "http://$ip:$port/$path")).delete()
+    }
+
+    private fun convertUri(httpServletRequest: HttpServletRequest, path: String): URI {
+        return UriComponentsBuilder.fromHttpUrl(path)
+            .query(httpServletRequest.queryString)
+            .build().toUri()
+
     }
 
     private fun targetIpAndPort(httpServletRequest: HttpServletRequest): IPAndPort {
         val instanceId = httpServletRequest.getHeader("Instance-Id")
+        return targetIpAndPort(instanceId)
+    }
+
+    private fun targetIpAndPort(instanceId: String?): IPAndPort {
         if (!StringUtils.hasText(instanceId)) throw TargetNotRegisteredException("proxy target id not provided")
-        val httpHeaders = HttpHeaders()
-        httpHeaders.set(HttpHeaders.AUTHORIZATION, httpServletRequest.getHeader(HttpHeaders.AUTHORIZATION))
         return (eurekaClient.getInstancesById(instanceId).firstOrNull() as? InstanceInfo)?.let {
             IPAndPort(
                 it.ipAddr, it.port.toString()

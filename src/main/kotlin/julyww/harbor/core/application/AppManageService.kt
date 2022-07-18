@@ -49,7 +49,8 @@ data class AppDTO(
     var basicAuthPassword: String?,
     var version: String?,
     var latestUpdateTime: Date?,
-    var remoteMd5: String?
+    var remoteMd5: String?,
+    var autoRestart: Boolean?
 )
 
 @ApiModel
@@ -93,6 +94,7 @@ class AppManageService(
                     basicAuthPassword = it.basicAuthPassword,
                     version = it.version,
                     latestUpdateTime = it.latestUpdateTime,
+                    autoRestart = it.autoRestart,
                     remoteMd5 = remoteMd5(it),
                 )
             },
@@ -113,6 +115,7 @@ class AppManageService(
                 it.localAppPath = entity.localAppPath
                 it.basicAuthUsername = entity.basicAuthUsername
                 it.basicAuthPassword = entity.basicAuthPassword
+                it.autoRestart = entity.autoRestart
                 appRepository.save(it)
             } ?: let {
                 entity.id = idGenerator.next()
