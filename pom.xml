@@ -16,7 +16,7 @@
     <properties>
         <java.version>11</java.version>
         <kotlin.version>1.6.21</kotlin.version>
-        <auth.version>1.0.31</auth.version>
+        <auth.version>1.0.34</auth.version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <docker-java.version>3.2.13</docker-java.version>
         <jsch.version>0.1.55</jsch.version>
@@ -36,6 +36,11 @@
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-core</artifactId>
             <version>1.6.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ulisesbocchio</groupId>
+            <artifactId>jasypt-spring-boot-starter</artifactId>
+            <version>3.0.4</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

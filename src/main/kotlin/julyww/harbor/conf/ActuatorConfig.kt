@@ -19,7 +19,7 @@ class ActuatorConfig {
             listOf(
                 PathAuthenticationTable(
                     listOf("/**${actuatorBasePath}/**"),
-                    AuthenticationInfo(true, emptySet())
+                    AuthenticationInfo(true, false, emptySet())
                 )
             )
         }
