@@ -57,7 +57,7 @@ data class AppDTO(
 class AppQueryBean {
 
     @ApiModelProperty("是否基于container是否存在来进行过滤")
-    var filterByContainerExist: Boolean = true
+    var filterByContainerExist: Boolean = false
 }
 
 @Service
