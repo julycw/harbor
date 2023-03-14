@@ -30,7 +30,22 @@ data class AppEntity(
 
     var latestUpdateTime: Date?,
 
-    var autoRestart: Boolean = true
+    var autoRestart: Boolean = true,
+
+    // 强制md5校验
+    var checkMd5: Boolean? = null,
+
+    // 定时重启
+    var scheduleRestart: Boolean? = false,
+
+    // 重启时间
+    var restartAt: String? = null,
+
+    // 自动更新
+    var scheduleUpdate: Boolean? = false,
+
+    // 自动更新时间
+    var updateAt: String? = null
 )
 
 interface AppRepository : PagingAndSortingRepository<AppEntity, Long>
