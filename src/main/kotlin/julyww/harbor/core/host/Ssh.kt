@@ -73,6 +73,9 @@ class SshSession(
         session = jsch.getSession(username, host, port)
         session.setPassword(password)
         session.setConfig("StrictHostKeyChecking", "no")
+        session.serverAliveInterval = 30 * 1000
+        session.serverAliveCountMax = 60
+        session.sendKeepAliveMsg()
     }
 
     fun connect(): SshSession {
