@@ -49,7 +49,7 @@ class GlobalSchedule(
 
         for (appDTO in list) {
             if (now >= appDTO.updateAt!! && prevTime < appDTO.updateAt!!) {
-                appManageService.update(appDTO.id!!)
+                appManageService.update(appDTO.id!!, autoSkip = true)
             }
         }
     }

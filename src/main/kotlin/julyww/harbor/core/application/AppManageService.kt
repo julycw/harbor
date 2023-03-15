@@ -1,11 +1,11 @@
 package julyww.harbor.core.application
 
+import cn.hutool.crypto.SecureUtil
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.model.Frame
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
-import julyww.harbor.common.MD5Util
 import julyww.harbor.common.PageResult
 import julyww.harbor.core.container.ContainerService
 import julyww.harbor.persist.IdGenerator
@@ -96,7 +96,7 @@ class AppManageService(
                     id = it.id,
                     name = it.name,
                     containerId = it.containerId,
-                    md5 = it.md5,
+                    md5 = it.md5 ?: localMd5(it),
                     downloadAppUrl = it.downloadAppUrl,
                     localAppPath = it.localAppPath,
                     basicAuthUsername = it.basicAuthUsername,
@@ -130,6 +130,11 @@ class AppManageService(
                 it.basicAuthUsername = entity.basicAuthUsername
                 it.basicAuthPassword = entity.basicAuthPassword
                 it.autoRestart = entity.autoRestart
+                it.checkMd5 = entity.checkMd5
+                it.scheduleRestart = entity.scheduleRestart
+                it.restartAt = entity.restartAt
+                it.scheduleUpdate = entity.scheduleUpdate
+                it.updateAt = entity.updateAt
                 appRepository.save(it)
             } ?: let {
                 entity.id = idGenerator.next()
@@ -211,8 +216,12 @@ class AppManageService(
     }
 
     fun update(id: Long, autoSkip: Boolean = false) {
-        LockUtils.lock(id) {
-            executors.submit {
+        LockUtils.check(id)
+        val app = appRepository.findByIdOrNull(id) ?: error("应用不存在")
+        val downloadUrl = app.downloadAppUrl ?: error("未设定下载地址")
+        val localPath = app.localAppPath ?: error("未设定部署地址")
+        executors.submit {
+            LockUtils.lock(id) {
                 appRepository.findByIdOrNull(id)?.let {
                     val remoteMd5 = remoteMd5(it)
                     if (autoSkip && remoteMd5 != null && remoteMd5 == it.md5) {
@@ -222,17 +231,18 @@ class AppManageService(
                     log.info("Updating ${it.name}...")
 
                     try {
-                        val downloadUrl = it.downloadAppUrl ?: error("未设定下载地址")
-                        val localPath = it.localAppPath ?: error("未设定部署地址")
                         val httpRequest: HttpEntity<Void> =
                             HttpEntity(CommonUtils.basicAuth(it.basicAuthUsername ?: "", it.basicAuthPassword ?: ""))
+
+                        log.info("Updating ${it.name}, begin download...")
                         val response: ResponseEntity<ByteArray> = downloadRestTemplate.exchange(
                             downloadUrl,
                             HttpMethod.GET,
                             httpRequest,
                             ByteArray::class
                         )
-                        it.md5 = MD5Util.md5(response.body!!)
+                        log.info("Updating ${it.name}, download success")
+                        it.md5 = SecureUtil.md5().digestHex(response.body)
                         if (it.checkMd5 == true) {
                             if (remoteMd5 != it.md5) {
                                 error("MD5校验失败，请重试")
@@ -262,6 +272,19 @@ class AppManageService(
                     }
                 }
             }
+        }
+    }
+
+    fun localMd5(appEntity: AppEntity): String? {
+        return try {
+            appEntity.localAppPath?.let {
+                val md5 = SecureUtil.md5(Path.of(it).toFile())
+                appEntity.md5 = md5
+                appRepository.save(appEntity)
+                md5
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 

@@ -2,19 +2,22 @@ package julyww.harbor.utils
 
 import java.util.*
 
-val appUpdateState: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+val appUpdateState: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
 object LockUtils {
+
+    fun check(target: Any) {
+        val targetId = target.toString()
+        if (appUpdateState[targetId] != null && appUpdateState[targetId] != Thread.currentThread().id) {
+            error("正在更新，请勿重复操作")
+        }
+    }
+
     fun lock(target: Any, block: () -> Unit) {
         val targetId = target.toString()
-        if (appUpdateState.contains(targetId)) {
-            error("正在更新，请勿重复操作")
-        }
-
-        if (appUpdateState.contains(targetId)) {
-            error("正在更新，请勿重复操作")
-        }
-        appUpdateState.add(targetId)
+        check(target)
+        appUpdateState[targetId] = Thread.currentThread().id
         try {
+            check(target)
             block()
         } finally {
             appUpdateState.remove(targetId)
