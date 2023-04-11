@@ -19,6 +19,18 @@ class GlobalExceptionHandler {
         ]
     )
     fun handleError(e: Exception): String? {
+        e.printStackTrace()
+        return e.message
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(
+        value = [
+            NullPointerException::class
+        ]
+    )
+    fun handleNullError(e: NullPointerException): String? {
+        e.printStackTrace()
         return e.message
     }
 

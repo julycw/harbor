@@ -23,12 +23,11 @@ class SshSessionManager {
     private val sessions: ConcurrentHashMap<String, SshSession> = ConcurrentHashMap()
 
     fun createSession(username: String, password: String, host: String, port: Int = 22): SshSession {
-        SshSession.of(username, password, host, port).let {
-            it.connect()
-            sessions[it.sessionId] = it
-            log.info("create ssh session $username@${host}:${port}, session id is ${it.sessionId}")
-            return it
-        }
+        val session = SshSession.of(username, password, host, port)
+        session.connect()
+        sessions[session.sessionId] = session
+        log.info("create ssh session $username@${host}:${port}, session id is ${session.sessionId}")
+        return session
     }
 
     fun getSession(sessionId: String): SshSession? = sessions[sessionId]
@@ -75,7 +74,6 @@ class SshSession(
         session.setConfig("StrictHostKeyChecking", "no")
         session.serverAliveInterval = 30 * 1000
         session.serverAliveCountMax = 60
-        session.sendKeepAliveMsg()
     }
 
     fun connect(): SshSession {
