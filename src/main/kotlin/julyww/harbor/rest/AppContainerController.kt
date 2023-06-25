@@ -16,6 +16,7 @@ import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.remote.SystemModuleList
 import julyww.harbor.remote.SystemModuleManage
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.multipart.MultipartFile
 import java.util.*
 
 
@@ -120,6 +121,14 @@ class AppController(
     @PostMapping("{id}/update")
     fun updateApp(@PathVariable id: Long) {
         appManageService.update(id)
+    }
+
+    @ApiOperation("更新应用模块(直接上传)")
+    @WriteLedger(description = "更新应用模块", targetId = "#id", targetType = AppEntity::class)
+    @RequiresPermissions(SystemModuleManage)
+    @PostMapping("{id}/update-upload")
+    fun updateAppByUploadFile(@PathVariable id: Long, file: MultipartFile) {
+        appManageService.updateByUploadFile(id, file)
     }
 
 }

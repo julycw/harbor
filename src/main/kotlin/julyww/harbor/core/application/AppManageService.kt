@@ -22,6 +22,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.exchange
+import org.springframework.web.multipart.MultipartFile
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -258,6 +259,38 @@ class AppManageService(
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING
                             )
+                        }
+                        it.latestUpdateTime = Date()
+                        appRepository.save(it)
+                        log.info("Updating ${it.name} finish")
+
+                        if (it.autoRestart) {
+                            restart(id)
+                        }
+                    } catch (e: Exception) {
+                        log.info("Updating ${it.name} failed: {}", e.message)
+                        throw e
+                    }
+                }
+            }
+        }
+    }
+
+    fun updateByUploadFile(id: Long, file: MultipartFile) {
+        LockUtils.check(id)
+        val app = appRepository.findByIdOrNull(id) ?: error("应用不存在")
+        val localPath = app.localAppPath ?: error("未设定部署地址")
+        executors.submit {
+            LockUtils.lock(id) {
+                appRepository.findByIdOrNull(id)?.let {
+                    log.info("Updating ${it.name}...")
+
+                    try {
+
+                        if (file.originalFilename!!.endsWith(".tar")) {
+                            CommonUtils.tarUnarchive(file.bytes, localPath)
+                        } else {
+                            file.transferTo(Path.of(localPath))
                         }
                         it.latestUpdateTime = Date()
                         appRepository.save(it)
