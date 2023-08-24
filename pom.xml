@@ -15,8 +15,8 @@
     <description>Demo project for Spring Boot</description>
     <properties>
         <java.version>11</java.version>
-        <kotlin.version>1.6.21</kotlin.version>
-        <auth.version>1.1.17</auth.version>
+        <kotlin.version>1.8.22</kotlin.version>
+        <auth.version>1.1.31</auth.version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
         <docker-java.version>3.2.13</docker-java.version>
         <jsch.version>0.1.55</jsch.version>
@@ -46,6 +46,11 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>31.1-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.trustway.nb</groupId>
+            <artifactId>util</artifactId>
+            <version>2.4.17</version>
         </dependency>
         <dependency>
             <groupId>cn.hutool</groupId>

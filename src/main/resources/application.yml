@@ -13,6 +13,10 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
 eureka:
   instance:
     prefer-ip-address: true
