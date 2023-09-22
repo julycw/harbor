@@ -1,6 +1,7 @@
 package julyww.harbor.core.application
 
 import cn.hutool.crypto.SecureUtil
+import cn.trustway.nb.util.SSLUtil
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.model.Frame
@@ -13,11 +14,13 @@ import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.persist.app.AppRepository
 import julyww.harbor.utils.CommonUtils
 import julyww.harbor.utils.LockUtils
+import org.apache.http.impl.client.HttpClients
 import org.slf4j.LoggerFactory
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
 import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
@@ -28,6 +31,8 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Executors
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.SSLSession
 
 data class AppDTO(
     var id: Long?,
@@ -70,7 +75,12 @@ class AppManageService(
     private val log = LoggerFactory.getLogger(AppManageService::class.java)
 
     private val downloadRestTemplate = let {
-        val factory = SimpleClientHttpRequestFactory()
+        val factory = HttpComponentsClientHttpRequestFactory()
+        val httpClient = HttpClients.custom()
+            .setSSLContext(SSLUtil.sslContextNoCheck())
+            .setSSLHostnameVerifier { _, _ -> true }
+            .build()
+        factory.httpClient = httpClient
         factory.setConnectTimeout(1000)
         factory.setReadTimeout(2 * 60 * 1000)
         RestTemplate(factory)
