@@ -78,7 +78,7 @@ class AppManageService(
         val factory = HttpComponentsClientHttpRequestFactory()
         val httpClient = HttpClients.custom()
             .setSSLContext(SSLUtil.sslContextNoCheck())
-            .setSSLHostnameVerifier { _, _ -> true }
+            .setSSLHostnameVerifier(SSLUtil::hostnameVerifier)
             .build()
         factory.httpClient = httpClient
         factory.setConnectTimeout(1000)
@@ -87,7 +87,12 @@ class AppManageService(
     }
 
     private val restTemplate = let {
-        val factory = SimpleClientHttpRequestFactory()
+        val factory = HttpComponentsClientHttpRequestFactory()
+        val httpClient = HttpClients.custom()
+            .setSSLContext(SSLUtil.sslContextNoCheck())
+            .setSSLHostnameVerifier(SSLUtil::hostnameVerifier)
+            .build()
+        factory.httpClient = httpClient
         factory.setConnectTimeout(1000)
         factory.setReadTimeout(1000)
         RestTemplate(factory)
