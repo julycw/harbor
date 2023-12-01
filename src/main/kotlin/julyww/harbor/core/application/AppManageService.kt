@@ -264,6 +264,11 @@ class AppManageService(
                                 error("MD5校验失败，请重试")
                             }
                         }
+
+                        if (it.autoRestart) {
+                            stop(id)
+                        }
+
                         if (downloadUrl.endsWith(".tar")) {
                             CommonUtils.tarUnarchive(response.body!!, localPath)
                         } else {
@@ -280,8 +285,9 @@ class AppManageService(
                         log.info("Updating ${it.name} finish")
 
                         if (it.autoRestart) {
-                            restart(id)
+                            start(id)
                         }
+
                     } catch (e: Exception) {
                         log.info("Updating ${it.name} failed: {}", e.message)
                         throw e
