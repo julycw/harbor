@@ -266,7 +266,10 @@ class AppManageService(
                         }
 
                         if (it.autoRestart) {
-                            stop(id)
+                            try {
+                                stop(id)
+                            } catch (ignore: Exception) {
+                            }
                         }
 
                         if (downloadUrl.endsWith(".tar")) {
@@ -285,7 +288,7 @@ class AppManageService(
                         log.info("Updating ${it.name} finish")
 
                         if (it.autoRestart) {
-                            start(id)
+                            restart(id)
                         }
 
                     } catch (e: Exception) {
