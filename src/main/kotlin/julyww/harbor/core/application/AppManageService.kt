@@ -265,7 +265,7 @@ class AppManageService(
                             }
                         }
 
-                        if (it.autoRestart) {
+                        if (it.autoRestart && !localPath.endsWith("harbor.jar")) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
@@ -292,8 +292,7 @@ class AppManageService(
                         }
 
                     } catch (e: Exception) {
-                        log.info("Updating ${it.name} failed: {}", e.message)
-                        throw e
+                        log.error("Updating ${it.name} failed: {}", e.message)
                     }
                 }
             }
@@ -311,6 +310,13 @@ class AppManageService(
 
                     try {
 
+                        if (it.autoRestart && !localPath.endsWith("harbor.jar")) {
+                            try {
+                                stop(id)
+                            } catch (ignore: Exception) {
+                            }
+                        }
+
                         if (file.originalFilename!!.endsWith(".tar")) {
                             CommonUtils.tarUnarchive(file.bytes, localPath)
                         } else {
@@ -324,7 +330,7 @@ class AppManageService(
                             restart(id)
                         }
                     } catch (e: Exception) {
-                        log.info("Updating ${it.name} failed: {}", e.message)
+                        log.error("Updating ${it.name} failed: {}", e.message)
                         throw e
                     }
                 }
