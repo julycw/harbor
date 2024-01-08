@@ -1,6 +1,7 @@
 package julyww.harbor.core.application
 
 import cn.hutool.crypto.SecureUtil
+import cn.trustway.nb.common.auth.exception.app.AppException
 import cn.trustway.nb.util.SSLUtil
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
@@ -8,6 +9,7 @@ import com.github.dockerjava.api.model.Frame
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.common.PageResult
+import julyww.harbor.core.certification.CertificationService
 import julyww.harbor.core.container.ContainerService
 import julyww.harbor.persist.IdGenerator
 import julyww.harbor.persist.app.AppEntity
@@ -21,7 +23,6 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
-import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.exchange
@@ -31,8 +32,6 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Executors
-import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.SSLSession
 
 data class AppDTO(
     var id: Long?,
@@ -41,6 +40,7 @@ data class AppDTO(
     var md5: String?,
     var downloadAppUrl: String?,
     var localAppPath: String?,
+    var certificationId: String?,
     var basicAuthUsername: String?,
     var basicAuthPassword: String?,
     var version: String?,
@@ -52,6 +52,11 @@ data class AppDTO(
     var restartAt: String?,
     var scheduleUpdate: Boolean?,
     var updateAt: String?,
+)
+
+data class BasicAuth(
+    val username: String,
+    val password: String
 )
 
 @ApiModel
@@ -69,7 +74,8 @@ class AppManageService(
     private val appRepository: AppRepository,
     private val dockerClient: DockerClient,
     private val containerService: ContainerService,
-    private val idGenerator: IdGenerator
+    private val idGenerator: IdGenerator,
+    private val certificationService: CertificationService
 ) {
 
     private val log = LoggerFactory.getLogger(AppManageService::class.java)
@@ -115,6 +121,7 @@ class AppManageService(
                     md5 = it.md5 ?: localMd5(it),
                     downloadAppUrl = it.downloadAppUrl,
                     localAppPath = it.localAppPath,
+                    certificationId = it.certificationId,
                     basicAuthUsername = it.basicAuthUsername,
                     basicAuthPassword = it.basicAuthPassword,
                     version = it.version,
@@ -143,6 +150,7 @@ class AppManageService(
                 it.containerId = entity.containerId
                 it.downloadAppUrl = entity.downloadAppUrl
                 it.localAppPath = entity.localAppPath
+                it.certificationId = entity.certificationId
                 it.basicAuthUsername = entity.basicAuthUsername
                 it.basicAuthPassword = entity.basicAuthPassword
                 it.autoRestart = entity.autoRestart
@@ -247,8 +255,8 @@ class AppManageService(
                     log.info("Updating ${it.name}...")
 
                     try {
-                        val httpRequest: HttpEntity<Void> =
-                            HttpEntity(CommonUtils.basicAuth(it.basicAuthUsername ?: "", it.basicAuthPassword ?: ""))
+                        val (username, password) = getBasicAuth(it)
+                        val httpRequest: HttpEntity<Void> = HttpEntity(CommonUtils.basicAuth(username, password))
 
                         log.info("Updating ${it.name}, begin download...")
                         val response: ResponseEntity<ByteArray> = downloadRestTemplate.exchange(
@@ -354,8 +362,8 @@ class AppManageService(
     fun remoteMd5(appEntity: AppEntity): String? {
         val downloadUrl = appEntity.downloadAppUrl ?: return null
         val md5Url = "$downloadUrl.md5"
-        val httpRequest: HttpEntity<Void> =
-            HttpEntity(CommonUtils.basicAuth(appEntity.basicAuthUsername ?: "", appEntity.basicAuthPassword ?: ""))
+        val (username, password) = getBasicAuth(appEntity)
+        val httpRequest: HttpEntity<Void> = HttpEntity(CommonUtils.basicAuth(username, password))
         return try {
             val response: ResponseEntity<String> = restTemplate.exchange(
                 md5Url,
@@ -369,6 +377,24 @@ class AppManageService(
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun getBasicAuth(app: AppEntity): BasicAuth {
+        val username: String
+        val password: String
+        if (app.basicAuthUsername.isNullOrBlank() || app.basicAuthPassword.isNullOrBlank()) {
+            if (app.certificationId.isNullOrBlank()) {
+                val cert = certificationService.findById(app.certificationId!!)
+                username = cert.username ?: throw AppException(400, "授权信息中的用户名为空")
+                password = cert.password ?: throw AppException(400, "授权信息中的密码为空")
+            } else {
+                throw AppException(400, "必须先配置用户名/密码或配置授权信息")
+            }
+        } else {
+            username = app.basicAuthUsername!!
+            password = app.basicAuthPassword!!
+        }
+        return BasicAuth(username, password)
     }
 
 }

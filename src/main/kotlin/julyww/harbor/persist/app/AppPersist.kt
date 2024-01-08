@@ -22,6 +22,8 @@ data class AppEntity(
 
     var localAppPath: String?,
 
+    var certificationId: String?,
+
     var basicAuthUsername: String?,
 
     var basicAuthPassword: String?,

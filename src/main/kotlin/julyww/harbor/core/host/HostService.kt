@@ -40,6 +40,7 @@ class HostService(
                 it.name = entity.name
                 it.ip = entity.ip
                 it.port = entity.port
+                it.certificationId = entity.certificationId
                 it.username = entity.username
                 it.password = entity.password
                 hostRepository.save(it)

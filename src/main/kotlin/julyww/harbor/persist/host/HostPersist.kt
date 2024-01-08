@@ -19,6 +19,8 @@ data class HostEntity(
 
     var port: Int?,
 
+    var certificationId: String?,
+
     var username: String?,
 
     var password: String?

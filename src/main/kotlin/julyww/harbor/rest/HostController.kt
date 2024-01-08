@@ -2,9 +2,11 @@ package julyww.harbor.rest
 
 import cn.trustway.nb.common.auth.annotation.auth.RequiresPermissions
 import cn.trustway.nb.common.auth.annotation.ledger.WriteLedger
+import cn.trustway.nb.common.auth.exception.app.AppException
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import julyww.harbor.common.PageResult
+import julyww.harbor.core.certification.CertificationService
 import julyww.harbor.core.host.HostService
 import julyww.harbor.core.host.SshSessionManager
 import julyww.harbor.persist.host.HostEntity
@@ -28,6 +30,7 @@ data class OutputBound(
 @RestController
 class HostController(
     private val sshSessionManager: SshSessionManager,
+    private val certificationService: CertificationService,
     private val hostService: HostService
 ) {
 
@@ -69,10 +72,25 @@ class HostController(
     @PostMapping("{id}/session")
     fun createSession(@PathVariable id: Long): String {
         return hostService.findById(id)?.let { host ->
+            val username: String
+            val password: String
+            if (host.username.isNullOrBlank() || host.password.isNullOrBlank()) {
+                if (host.certificationId.isNullOrBlank()) {
+                    val cert = certificationService.findById(host.certificationId!!)
+                    username = cert.username ?: throw AppException(400, "授权信息中的用户名为空")
+                    password = cert.password ?: throw AppException(400, "授权信息中的密码为空")
+                } else {
+                    throw AppException(400, "必须先配置用户名/密码或配置授权信息")
+                }
+            } else {
+                username = host.username!!
+                password = host.password!!
+            }
+
             try {
                 sshSessionManager.createSession(
-                    username = host.username ?: error("必须先配置登陆用户名"),
-                    password = host.password ?: error("必须先配置登陆密码"),
+                    username = username,
+                    password = password,
                     host = host.ip ?: error("必须先配置IP地址"),
                     port = host.port ?: 22
                 ).sessionId
