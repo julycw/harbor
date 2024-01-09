@@ -8,6 +8,8 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: true
+      fail-on-empty-beans: false
+      fail-on-unwrapped-type-identifiers: false
   lifecycle:
     timeout-per-shutdown-phase: 15s
   mvc:

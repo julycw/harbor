@@ -47,7 +47,10 @@ data class AppEntity(
     var scheduleUpdate: Boolean? = false,
 
     // 自动更新时间
-    var updateAt: String? = null
+    var updateAt: String? = null,
+
+    // 点位
+    var endpoint: String? = null
 )
 
 interface AppRepository : PagingAndSortingRepository<AppEntity, Long>

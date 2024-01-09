@@ -58,7 +58,7 @@ class CertificationService(
                 username = entity.username?.let { JasyptUtils.decrypt(it, password) },
                 password = entity.password?.let { JasyptUtils.decrypt(it, password) },
             )
-        }.orElseThrow { AppException(400, "授权凭证不存在") }
+        }.orElseThrow { AppException(400, "授权凭证(${id})不存在") }
     }
 
 }

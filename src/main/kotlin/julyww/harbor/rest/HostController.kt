@@ -75,7 +75,7 @@ class HostController(
             val username: String
             val password: String
             if (host.username.isNullOrBlank() || host.password.isNullOrBlank()) {
-                if (host.certificationId.isNullOrBlank()) {
+                if (!host.certificationId.isNullOrBlank()) {
                     val cert = certificationService.findById(host.certificationId!!)
                     username = cert.username ?: throw AppException(400, "授权信息中的用户名为空")
                     password = cert.password ?: throw AppException(400, "授权信息中的密码为空")

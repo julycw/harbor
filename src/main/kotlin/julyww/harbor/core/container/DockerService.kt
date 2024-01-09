@@ -2,6 +2,8 @@ package julyww.harbor.core.container
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
+import com.github.dockerjava.api.command.InspectContainerResponse
+import com.github.dockerjava.api.model.Info
 import com.github.dockerjava.api.model.Statistics
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
@@ -30,9 +32,13 @@ class StatsResultReceiver : ResultCallback.Adapter<Statistics>() {
 }
 
 @Service
-class ContainerService(
+class DockerService(
     private val dockerClient: DockerClient
 ) {
+
+    fun sys(): Info {
+        return dockerClient.infoCmd().exec()
+    }
 
     fun list(): List<Container> {
         return dockerClient.listContainersCmd().withShowAll(true).exec().map {
@@ -51,6 +57,10 @@ class ContainerService(
             .withNoStream(true)
             .exec(StatsResultReceiver())
             .getStats(10000)
+    }
+
+    fun inspect(containerId: String): InspectContainerResponse {
+        return dockerClient.inspectContainerCmd(containerId).exec()
     }
 
 }

@@ -3,6 +3,8 @@ package julyww.harbor.rest
 import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
 import cn.trustway.nb.common.auth.annotation.auth.RequiresPermissions
 import cn.trustway.nb.common.auth.annotation.ledger.WriteLedger
+import com.github.dockerjava.api.command.InspectContainerResponse
+import com.github.dockerjava.api.model.Info
 import com.github.dockerjava.api.model.Statistics
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -11,7 +13,7 @@ import julyww.harbor.core.application.AppDTO
 import julyww.harbor.core.application.AppManageService
 import julyww.harbor.core.application.AppQueryBean
 import julyww.harbor.core.container.Container
-import julyww.harbor.core.container.ContainerService
+import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.remote.SystemModuleList
 import julyww.harbor.remote.SystemModuleManage
@@ -20,26 +22,40 @@ import org.springframework.web.multipart.MultipartFile
 import java.util.*
 
 
-@Api(tags = ["容器"])
+@Api(tags = ["Docker"])
 @RequiresAuthentication
-@RequestMapping("/container")
+@RequestMapping
 @RestController
-class ContainerController(
-    private val containerService: ContainerService
+class DockerController(
+    private val dockerService: DockerService
 ) {
+
+    @ApiOperation("查询Docker信息")
+    @RequiresPermissions(SystemModuleList)
+    @GetMapping("docker-info")
+    fun dockerInfo(): Info {
+        return dockerService.sys()
+    }
 
     @ApiOperation("查询容器列表")
     @RequiresPermissions(SystemModuleList)
-    @GetMapping
+    @GetMapping("container")
     fun listContainer(): List<Container> {
-        return containerService.list()
+        return dockerService.list()
     }
 
     @ApiOperation("查询容器状态")
     @RequiresPermissions(SystemModuleList)
-    @GetMapping("{id}/stats")
+    @GetMapping("container/{id}/stats")
     fun statsContainer(@PathVariable id: String): List<Statistics> {
-        return containerService.stats(id)
+        return dockerService.stats(id)
+    }
+
+    @ApiOperation("查询容器信息")
+    @RequiresPermissions(SystemModuleList)
+    @GetMapping("container/{id}/inspect")
+    fun inspectContainer(@PathVariable id: String): InspectContainerResponse {
+        return dockerService.inspect(id)
     }
 }
 

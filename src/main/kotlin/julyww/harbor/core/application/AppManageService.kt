@@ -10,11 +10,13 @@ import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.common.PageResult
 import julyww.harbor.core.certification.CertificationService
-import julyww.harbor.core.container.ContainerService
+import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.IdGenerator
 import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.persist.app.AppRepository
+import julyww.harbor.props.HarborProps
 import julyww.harbor.utils.CommonUtils
+import julyww.harbor.utils.Environments
 import julyww.harbor.utils.LockUtils
 import org.apache.http.impl.client.HttpClients
 import org.slf4j.LoggerFactory
@@ -52,6 +54,7 @@ data class AppDTO(
     var restartAt: String?,
     var scheduleUpdate: Boolean?,
     var updateAt: String?,
+    var endpoint: String?
 )
 
 data class BasicAuth(
@@ -61,6 +64,9 @@ data class BasicAuth(
 
 @ApiModel
 class AppQueryBean(
+
+    @ApiModelProperty("是否基于endpoint是否匹配来进行过滤")
+    var filterByEndpointMatch: Boolean = true,
 
     @ApiModelProperty("是否基于container是否存在来进行过滤")
     var filterByContainerExist: Boolean = false,
@@ -73,9 +79,11 @@ class AppQueryBean(
 class AppManageService(
     private val appRepository: AppRepository,
     private val dockerClient: DockerClient,
-    private val containerService: ContainerService,
+    private val dockerService: DockerService,
     private val idGenerator: IdGenerator,
-    private val certificationService: CertificationService
+    private val certificationService: CertificationService,
+    private val appEventBus: AppEventBus,
+    private val environments: Environments
 ) {
 
     private val log = LoggerFactory.getLogger(AppManageService::class.java)
@@ -108,8 +116,11 @@ class AppManageService(
 
     fun list(query: AppQueryBean): PageResult<AppDTO> {
         var list = appRepository.findAll().toList()
+        if (query.filterByEndpointMatch) {
+            list = list.filter { it.endpoint.isNullOrBlank() || it.endpoint == environments.endpoint }
+        }
         if (query.filterByContainerExist) {
-            val containers = containerService.list().map { it.id }.toSet()
+            val containers = dockerService.list().map { it.id }.toSet()
             list = list.filter { it.containerId.isNullOrBlank() || containers.contains(it.containerId) }
         }
         return PageResult(
@@ -133,6 +144,7 @@ class AppManageService(
                     restartAt = it.restartAt,
                     scheduleUpdate = it.scheduleUpdate,
                     updateAt = it.updateAt,
+                    endpoint = it.endpoint
                 )
             },
             total = list.size.toLong()
@@ -141,9 +153,9 @@ class AppManageService(
 
     fun save(entity: AppEntity): Long? {
         val targetId = entity.id
-        return if (targetId == null) {
+        val data = if (targetId == null) {
             entity.id = idGenerator.next()
-            appRepository.save(entity).id
+            entity
         } else {
             appRepository.findByIdOrNull(targetId)?.let {
                 it.name = entity.name
@@ -162,14 +174,16 @@ class AppManageService(
                 appRepository.save(it)
             } ?: let {
                 entity.id = idGenerator.next()
-                appRepository.save(entity).id
             }
-            entity.id
+            entity
         }
+        data.endpoint = environments.endpoint
+        return appRepository.save(data).id
     }
 
     fun delete(id: Long) {
         appRepository.deleteById(id)
+        appEventBus.post(AppDeletedEvent(id))
     }
 
     fun log(id: Long, tail: Int = 500, since: Date? = null, withTimestamps: Boolean = false): List<String> {
@@ -252,7 +266,9 @@ class AppManageService(
                         return@let
                     }
 
+
                     log.info("Updating ${it.name}...")
+                    appEventBus.post(AppBeforeUpdateEvent(id))
 
                     try {
                         val (username, password) = getBasicAuth(it)
@@ -273,7 +289,7 @@ class AppManageService(
                             }
                         }
 
-                        if (it.autoRestart && !localPath.endsWith("harbor.jar")) {
+                        if (it.autoRestart && it.containerId != environments.dockerContainerId) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
@@ -299,6 +315,8 @@ class AppManageService(
                             restart(id)
                         }
 
+                        appEventBus.post(AppUpdatedEvent(id))
+
                     } catch (e: Exception) {
                         log.error("Updating ${it.name} failed: {}", e.message)
                     }
@@ -315,10 +333,11 @@ class AppManageService(
             LockUtils.lock(id) {
                 appRepository.findByIdOrNull(id)?.let {
                     log.info("Updating ${it.name}...")
+                    appEventBus.post(AppBeforeUpdateEvent(id))
 
                     try {
 
-                        if (it.autoRestart && !localPath.endsWith("harbor.jar")) {
+                        if (it.autoRestart && it.containerId != environments.dockerContainerId) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
@@ -337,6 +356,8 @@ class AppManageService(
                         if (it.autoRestart) {
                             restart(id)
                         }
+
+                        appEventBus.post(AppUpdatedEvent(id))
                     } catch (e: Exception) {
                         log.error("Updating ${it.name} failed: {}", e.message)
                         throw e
@@ -383,13 +404,10 @@ class AppManageService(
         val username: String
         val password: String
         if (app.basicAuthUsername.isNullOrBlank() || app.basicAuthPassword.isNullOrBlank()) {
-            if (app.certificationId.isNullOrBlank()) {
-                val cert = certificationService.findById(app.certificationId!!)
-                username = cert.username ?: throw AppException(400, "授权信息中的用户名为空")
-                password = cert.password ?: throw AppException(400, "授权信息中的密码为空")
-            } else {
-                throw AppException(400, "必须先配置用户名/密码或配置授权信息")
-            }
+            val certificationId = if (app.certificationId.isNullOrBlank()) "default" else app.certificationId!!
+            val cert = certificationService.findById(certificationId)
+            username = cert.username ?: throw AppException(400, "授权信息中的用户名为空")
+            password = cert.password ?: throw AppException(400, "授权信息中的密码为空")
         } else {
             username = app.basicAuthUsername!!
             password = app.basicAuthPassword!!

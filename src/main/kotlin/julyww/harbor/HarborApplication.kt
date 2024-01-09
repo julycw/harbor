@@ -6,6 +6,9 @@ import julyww.harbor.core.certification.CertificationDTO
 import julyww.harbor.core.certification.CertificationService
 import julyww.harbor.core.certification.persist.CertificationType
 import julyww.harbor.persist.app.AppRepository
+import julyww.harbor.props.HarborProps
+import julyww.harbor.utils.Environments
+import org.slf4j.LoggerFactory
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -23,8 +26,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @SpringBootApplication
 class HarborApplication(
     private val appRepository: AppRepository,
+    private val harborProps: HarborProps,
+    private val environments: Environments,
     private val certificationService: CertificationService
 ) : CommandLineRunner {
+
+    private val log = LoggerFactory.getLogger(HarborApplication::class.java)
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(
@@ -64,6 +71,11 @@ class HarborApplication(
 
         } catch (ignore: Exception) {
         }
+
+        log.info("************************************************")
+        log.info("Endpoint is: ${environments.endpoint}")
+        log.info("Backup dir is: ${harborProps.backupDir}")
+        log.info("************************************************")
     }
 }
 

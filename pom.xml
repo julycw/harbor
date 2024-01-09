@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.6.9</version>
+        <version>2.7.17</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>julyww</groupId>
@@ -15,10 +15,10 @@
     <description>Demo project for Spring Boot</description>
     <properties>
         <java.version>11</java.version>
-        <kotlin.version>1.8.22</kotlin.version>
-        <auth.version>1.1.42</auth.version>
-        <spring-cloud.version>2021.0.3</spring-cloud.version>
-        <docker-java.version>3.2.13</docker-java.version>
+        <kotlin.version>1.9.22</kotlin.version>
+        <auth.version>1.1.46</auth.version>
+        <spring-cloud.version>2021.0.8</spring-cloud.version>
+        <docker-java.version>3.3.4</docker-java.version>
         <jsch.version>0.1.55</jsch.version>
     </properties>
     <dependencies>

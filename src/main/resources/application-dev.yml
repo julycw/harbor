@@ -1,6 +1,5 @@
 server:
   port: 8088
-
 eureka:
   client:
     service-url:
@@ -8,5 +7,7 @@ eureka:
 spring:
   redis:
     host: 192.168.200.17
-    database: 5
+    database: 3
     password: cdtnb...
+harbor:
+  backup-dir: /Users/july/temp/harbor
