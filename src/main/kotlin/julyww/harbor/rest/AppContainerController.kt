@@ -9,12 +9,11 @@ import com.github.dockerjava.api.model.Statistics
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import julyww.harbor.common.PageResult
-import julyww.harbor.core.application.AppDTO
-import julyww.harbor.core.application.AppManageService
-import julyww.harbor.core.application.AppQueryBean
+import julyww.harbor.core.application.*
 import julyww.harbor.core.container.Container
 import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.app.AppEntity
+import julyww.harbor.persist.app.UpdateHistoryEntity
 import julyww.harbor.remote.SystemModuleList
 import julyww.harbor.remote.SystemModuleManage
 import org.springframework.web.bind.annotation.*
@@ -64,7 +63,8 @@ class DockerController(
 @RequiresAuthentication
 @RestController
 class AppController(
-    private val appManageService: AppManageService
+    private val appManageService: AppManageService,
+    private val updateHistoryService: UpdateHistoryService
 ) {
 
     @ApiOperation("分页查询应用列表")
@@ -107,6 +107,13 @@ class AppController(
         )
     }
 
+    @ApiOperation("查询更新记录")
+    @RequiresPermissions(SystemModuleManage)
+    @GetMapping("{id}/update-history")
+    fun getAppUpdateHistory(@PathVariable id: Long): List<UpdateHistoryEntity> {
+        return updateHistoryService.listByApp(id)
+    }
+
     @ApiOperation("启动应用模块")
     @WriteLedger(description = "启动应用模块", targetId = "#id", targetType = AppEntity::class)
     @RequiresPermissions(SystemModuleManage)
@@ -137,6 +144,15 @@ class AppController(
     @PostMapping("{id}/update")
     fun updateApp(@PathVariable id: Long) {
         appManageService.update(id)
+    }
+
+
+    @ApiOperation("回滚应用模块")
+    @WriteLedger(description = "滚回应用模块", targetId = "#id", targetType = AppEntity::class)
+    @RequiresPermissions(SystemModuleManage)
+    @PostMapping("{id}/rollback/{updateHistoryId}")
+    fun rollbackApp(@PathVariable id: Long, @PathVariable updateHistoryId: Long) {
+        appManageService.rollback(id, updateHistoryId)
     }
 
     @ApiOperation("更新应用模块(直接上传)")

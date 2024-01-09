@@ -22,6 +22,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.name
 
+
 @Service
 class UpdateHistoryService(
     private val appRepository: AppRepository,
@@ -34,24 +35,29 @@ class UpdateHistoryService(
 
     private val log = LoggerFactory.getLogger(this::class.java)
 
+    fun listByApp(appId: Long): List<UpdateHistoryEntity> {
+        return updateHistoryRepository.findByApplicationId(appId)
+    }
+
 
     @Subscribe
     fun handleAppBeforeUpdate(event: AppBeforeUpdateEvent) {
         val app = appRepository.findByIdOrNull(event.appId) ?: return
         val history = updateHistoryRepository.findByApplicationId(event.appId)
         if (history.isEmpty()) {
-            log.info("app(${app.name}) has no update history, auto make backup...")
-            val origin = updateHistoryRepository.save(UpdateHistoryEntity(
-                id = idGenerator.next(),
-                applicationId = app.id!!,
-                updateTime = Date(),
-                updateFileMd5 = app.md5!!,
-                state = UpdateState.Success
-            ))
-            doBackup(origin)?.let {
-                origin.backupFilePath = it
-                updateHistoryRepository.save(origin)
-                log.info("app(${app.name}) auto make backup success!")
+            log.info("app ${app.name} has no update history, auto make backup...")
+            val backupFilePath = doBackup(app.id!!)
+            if (!backupFilePath.isNullOrBlank()) {
+                val record = UpdateHistoryEntity(
+                    id = idGenerator.next(),
+                    applicationId = app.id!!,
+                    updateTime = Date(),
+                    updateFileMd5 = app.md5!!,
+                    backupFilePath = doBackup(app.id!!),
+                    state = UpdateState.Success
+                )
+                updateHistoryRepository.save(record)
+                log.info("app ${app.name} auto make backup success!")
             }
         }
     }
@@ -65,6 +71,7 @@ class UpdateHistoryService(
             updateTime = Date()
             updateFileMd5 = app.md5!!
             state = UpdateState.Checking
+            removeBackup(this)
         } ?: UpdateHistoryEntity(
             id = idGenerator.next(),
             applicationId = app.id!!,
@@ -72,11 +79,8 @@ class UpdateHistoryService(
             updateFileMd5 = app.md5!!,
             state = UpdateState.Checking
         )
-        record = updateHistoryRepository.save(record)
-        doBackup(record)?.let {
-            record.backupFilePath = it
-            updateHistoryRepository.save(record)
-        }
+        record.backupFilePath = doBackup(app.id!!)
+        updateHistoryRepository.save(record)
     }
 
 
@@ -114,7 +118,8 @@ class UpdateHistoryService(
                 updateHistoryRepository.save(record)
                 if (newState == UpdateState.Success) {
                     var keep = 2
-                    for (updateHistoryEntity in updateHistoryRepository.findByApplicationId(record.applicationId).sortedByDescending { it.updateTime }) {
+                    for (updateHistoryEntity in updateHistoryRepository.findByApplicationId(record.applicationId)
+                        .sortedByDescending { it.updateTime }) {
                         if (updateHistoryEntity.state == UpdateState.Fail) {
                             updateHistoryRepository.delete(updateHistoryEntity)
                             removeBackup(updateHistoryEntity)
@@ -131,9 +136,13 @@ class UpdateHistoryService(
         }
     }
 
-    private fun doBackup(historyRecord: UpdateHistoryEntity): String? {
-        val app = appRepository.findByIdOrNull(historyRecord.applicationId) ?: return null
-        val appPath = app.localAppPath?.let { Path.of(it) } ?: return null
+    private fun doBackup(appId: Long): String? {
+        val app = appRepository.findByIdOrNull(appId) ?: return null
+        val appPath = app.localAppPath?.let { Path.of(it) }
+        if (appPath == null) {
+            log.warn("backup for ${app.name} failed! appPath is empty")
+            return null
+        }
 
         if (!Files.exists(appPath)) {
             log.warn("backup for ${app.name} failed! local app path '${app.localAppPath}' not exist!")
@@ -156,7 +165,7 @@ class UpdateHistoryService(
 
             return backupFile.toString()
         } catch (e: Exception) {
-            log.warn(e.message)
+            log.warn("backup for ${app.name} failed! {}", e.message)
             return null
         }
     }
