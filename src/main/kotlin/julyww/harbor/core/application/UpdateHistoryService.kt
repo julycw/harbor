@@ -36,7 +36,7 @@ class UpdateHistoryService(
     private val log = LoggerFactory.getLogger(this::class.java)
 
     fun listByApp(appId: Long): List<UpdateHistoryEntity> {
-        return updateHistoryRepository.findByApplicationId(appId)
+        return updateHistoryRepository.findByApplicationId(appId).sortedByDescending { it.updateTime }
     }
 
 
@@ -106,8 +106,8 @@ class UpdateHistoryService(
                 newState = UpdateState.Fail
             } else {
                 val inspect = dockerService.inspect(app.containerId!!)
-                val startAt = DateUtil.convert2Date(inspect.state.startedAt, CHN_DATETIME_FORMAT)
-                if (inspect.state.running == true && startAt.before(addMinutes)) {
+                val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
+                if (inspect.state.running == true && startAt?.before(addMinutes) == true) {
                     newState = UpdateState.Success
                 } else if (record.updateTime.before(addMinutes2)) {
                     newState = UpdateState.Fail
@@ -134,6 +134,10 @@ class UpdateHistoryService(
                 }
             }
         }
+    }
+
+    private fun parseDockerDate(time: String): Date {
+        return DateUtil.convert2Date(time.substring(0, CHN_DATETIME_FORMAT.length).replace("T", " "), CHN_DATETIME_FORMAT)
     }
 
     private fun doBackup(appId: Long): String? {

@@ -55,7 +55,7 @@ class UpdateHistoryEntity(
         if (!backUpFileExist) {
             false
         } else {
-            updateFileMd5 == SecureUtil.md5(Path.of(backupFilePath!!).toFile())
+            updateFileMd5 == SecureUtil.md5().digestHex(Path.of(backupFilePath!!).toFile())
         }
     }
 

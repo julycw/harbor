@@ -284,9 +284,9 @@ class AppManageService(
                             ByteArray::class
                         )
                         log.info("Updating ${it.name}, download success")
-                        it.md5 = SecureUtil.md5().digestHex(response.body)
+                        val downloadedFileMd5 = SecureUtil.md5().digestHex(response.body)
                         if (it.checkMd5 == true) {
-                            if (remoteMd5 != it.md5) {
+                            if (remoteMd5 != downloadedFileMd5) {
                                 throw AppException(400, "MD5校验失败，请重试")
                             }
                         }
@@ -309,6 +309,7 @@ class AppManageService(
                                 StandardOpenOption.TRUNCATE_EXISTING
                             )
                         }
+                        it.md5 = downloadedFileMd5
                         it.latestUpdateTime = Date()
                         appRepository.save(it)
                         log.info("Updating ${it.name} finish")
@@ -351,6 +352,7 @@ class AppManageService(
                         } else {
                             file.transferTo(Path.of(localPath))
                         }
+                        it.md5 = SecureUtil.md5().digestHex(file.bytes)
                         it.latestUpdateTime = Date()
                         appRepository.save(it)
                         log.info("Updating ${it.name} finish")
@@ -373,7 +375,8 @@ class AppManageService(
         LockUtils.check(id)
         val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
         val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
-        val updateHistory = updateHistoryRepository.findByIdOrNull(updateHistoryId) ?: throw AppException(400, "更新历史不存在")
+        val updateHistory =
+            updateHistoryRepository.findByIdOrNull(updateHistoryId) ?: throw AppException(400, "更新历史不存在")
         if (updateHistory.applicationId != app.id) {
             throw AppException(400, "更新历史不存在")
         }
@@ -406,6 +409,7 @@ class AppManageService(
                                 StandardCopyOption.COPY_ATTRIBUTES
                             )
                         }
+                        it.md5 = updateHistory.updateFileMd5
                         it.latestUpdateTime = Date()
                         appRepository.save(it)
                         log.info("Rollback ${it.name} finish")
@@ -425,7 +429,7 @@ class AppManageService(
     fun localMd5(appEntity: AppEntity): String? {
         return try {
             appEntity.localAppPath?.let {
-                val md5 = SecureUtil.md5(Path.of(it).toFile())
+                val md5 = SecureUtil.md5().digestHex(Path.of(it).toFile())
                 appEntity.md5 = md5
                 appRepository.save(appEntity)
                 md5
