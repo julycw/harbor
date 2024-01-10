@@ -139,10 +139,12 @@ class UpdateHistoryService(
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)
     fun checkUpdateState() {
         val now = Date()
+        val minutes = 10
+        val minutes2 = 15
         // 超过这个分钟数后容器状态始终保持为running，则标记为成功
-        val addMinutes = DateUtil.addMinutes(now, -10)
+        val addMinutes = DateUtil.addMinutes(now, -minutes)
         // 超过这个分钟数后容器状态还没变为running，标记为更新失败
-        val addMinutes2 = DateUtil.addMinutes(now, -15)
+        val addMinutes2 = DateUtil.addMinutes(now, -minutes2)
         val updateHistory = updateHistoryRepository.findAll().filter { it.state == UpdateState.Checking }
         for (record in updateHistory) {
             var newState: UpdateState? = null
@@ -154,13 +156,13 @@ class UpdateHistoryService(
                 val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
                 if (inspect.state.running == true && startAt?.before(addMinutes) == true) {
                     newState = UpdateState.Success
-                    log.info("app {${app.name}} is running last $addMinutes minutes, mark as Success!")
+                    log.info("app ${app.name} is running last $minutes minutes, mark as Success!")
                 } else if (record.updateTime.before(addMinutes2)) {
                     newState = UpdateState.Fail
-                    log.warn("app {${app.name}} is not running $addMinutes2 minutes after updated, mark as Fail!")
+                    log.warn("app ${app.name} is not running $minutes2 minutes after updated, mark as Fail!")
                     // 自动回滚
                     if (app.autoRollbackWhenUpdateFail != false) {
-                        log.warn("app {${app.name}} is try to rollback...")
+                        log.warn("app ${app.name} is try to rollback...")
                         rollbackToLatestSuccessVersion(app)
                     }
                 }
@@ -194,9 +196,9 @@ class UpdateHistoryService(
             .maxByOrNull { it.updateTime }
         if (oldVersion != null) {
             appManageService.rollback(app.id!!, oldVersion.id)
-            log.warn("app {${app.name}} rollback done!")
+            log.warn("app ${app.name} rollback done!")
         } else {
-            log.warn("app {${app.name}} rollback failed!")
+            log.warn("app ${app.name} rollback failed!")
         }
     }
 
