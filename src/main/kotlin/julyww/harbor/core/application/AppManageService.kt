@@ -375,8 +375,8 @@ class AppManageService(
         LockUtils.check(id)
         val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
         val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
-        val updateHistory =
-            updateHistoryRepository.findByIdOrNull(updateHistoryId) ?: throw AppException(400, "更新历史不存在")
+        val updateHistory = updateHistoryRepository.findById(updateHistoryId).map { UpdateHistoryDTO(it) }
+            .orElseThrow { AppException(400, "更新历史不存在") }
         if (updateHistory.applicationId != app.id) {
             throw AppException(400, "更新历史不存在")
         }

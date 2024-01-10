@@ -34,32 +34,7 @@ class UpdateHistoryEntity(
 
     var backupFilePath: String? = null
 
-) {
-
-
-    @get:ApiModelProperty("备份文件是否存在")
-    val backUpFileExist: Boolean by lazy {
-        try {
-            if (backupFilePath.isNullOrBlank()) {
-                false
-            } else if (!Files.exists(Path.of(backupFilePath!!))) {
-                false
-            } else true
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    @get:ApiModelProperty("是否可进行回滚")
-    val rollbackAble: Boolean by lazy {
-        if (!backUpFileExist) {
-            false
-        } else {
-            updateFileMd5 == SecureUtil.md5().digestHex(Path.of(backupFilePath!!).toFile())
-        }
-    }
-
-}
+)
 
 interface UpdateHistoryRepository : PagingAndSortingRepository<UpdateHistoryEntity, Long> {
     fun findByApplicationId(applicationId: Long): List<UpdateHistoryEntity>

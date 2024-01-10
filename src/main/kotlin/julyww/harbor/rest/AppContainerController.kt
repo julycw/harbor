@@ -110,7 +110,7 @@ class AppController(
     @ApiOperation("查询更新记录")
     @RequiresPermissions(SystemModuleManage)
     @GetMapping("{id}/update-history")
-    fun getAppUpdateHistory(@PathVariable id: Long): List<UpdateHistoryEntity> {
+    fun getAppUpdateHistory(@PathVariable id: Long): List<UpdateHistoryDTO> {
         return updateHistoryService.listByApp(id)
     }
 

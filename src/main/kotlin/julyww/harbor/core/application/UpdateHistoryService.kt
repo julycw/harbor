@@ -1,8 +1,10 @@
 package julyww.harbor.core.application
 
+import cn.hutool.crypto.SecureUtil
 import cn.trustway.nb.util.DateUtil
 import cn.trustway.nb.util.DateUtil.CHN_DATETIME_FORMAT
 import com.google.common.eventbus.Subscribe
+import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.IdGenerator
 import julyww.harbor.persist.app.AppRepository
@@ -22,6 +24,48 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.name
 
+class UpdateHistoryDTO(
+    var id: Long,
+    var applicationId: Long,
+    var updateTime: Date,
+    var updateFileMd5: String,
+    var state: UpdateState,
+    var backupFilePath: String? = null
+) {
+
+
+    @get:ApiModelProperty("备份文件是否存在")
+    val backUpFileExist: Boolean by lazy {
+        try {
+            if (backupFilePath.isNullOrBlank()) {
+                false
+            } else if (!Files.exists(Path.of(backupFilePath!!))) {
+                false
+            } else true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    @get:ApiModelProperty("是否可进行回滚")
+    val rollbackAble: Boolean by lazy {
+        if (!backUpFileExist) {
+            false
+        } else {
+            updateFileMd5 == SecureUtil.md5().digestHex(Path.of(backupFilePath!!).toFile())
+        }
+    }
+
+    constructor(entity: UpdateHistoryEntity) : this(
+        id = entity.id!!,
+        applicationId = entity.applicationId,
+        updateTime = entity.updateTime,
+        updateFileMd5 = entity.updateFileMd5,
+        state = entity.state,
+        backupFilePath = entity.backupFilePath,
+    )
+
+}
 
 @Service
 class UpdateHistoryService(
@@ -35,8 +79,12 @@ class UpdateHistoryService(
 
     private val log = LoggerFactory.getLogger(this::class.java)
 
-    fun listByApp(appId: Long): List<UpdateHistoryEntity> {
-        return updateHistoryRepository.findByApplicationId(appId).sortedByDescending { it.updateTime }
+    fun findById(id: Long): UpdateHistoryDTO {
+        return updateHistoryRepository.findById(id).map { UpdateHistoryDTO(it) }.orElseThrow()
+    }
+
+    fun listByApp(appId: Long): List<UpdateHistoryDTO> {
+        return updateHistoryRepository.findByApplicationId(appId).sortedByDescending { it.updateTime }.map { UpdateHistoryDTO(it) }
     }
 
 
@@ -137,7 +185,10 @@ class UpdateHistoryService(
     }
 
     private fun parseDockerDate(time: String): Date {
-        return DateUtil.convert2Date(time.substring(0, CHN_DATETIME_FORMAT.length).replace("T", " "), CHN_DATETIME_FORMAT)
+        return DateUtil.convert2Date(
+            time.substring(0, CHN_DATETIME_FORMAT.length).replace("T", " "),
+            CHN_DATETIME_FORMAT
+        )
     }
 
     private fun doBackup(appId: Long): String? {
