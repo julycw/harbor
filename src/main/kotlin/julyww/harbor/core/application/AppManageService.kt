@@ -263,16 +263,21 @@ class AppManageService(
 
     fun restart(id: Long) {
         appRepository.findByIdOrNull(id)?.let {
-            it.containerId?.let { containerId ->
-                if (containerId.isNotBlank()) {
-                    log.info("Restarting ${it.name}...")
-                    try {
-                        dockerClient.restartContainerCmd(containerId).exec()
-                        log.info("Restart ${it.name} finish!")
-                    } catch (e: Exception) {
-                        log.info("Restart ${it.name} failed: {}", e.message)
-                        throw e
-                    }
+            restart(it)
+        }
+    }
+
+
+    fun restart(it: AppEntity) {
+        it.containerId?.let { containerId ->
+            if (containerId.isNotBlank()) {
+                log.info("Restarting ${it.name}...")
+                try {
+                    dockerClient.restartContainerCmd(containerId).exec()
+                    log.info("Restart ${it.name} finish!")
+                } catch (e: Exception) {
+                    log.info("Restart ${it.name} failed: {}", e.message)
+                    throw e
                 }
             }
         }
@@ -338,7 +343,7 @@ class AppManageService(
                         log.info("Updating ${it.name} finish")
 
                         if (it.autoRestart) {
-                            restart(id)
+                            restart(it)
                         }
 
                         appEventBus.post(AppUpdatedEvent(id))
@@ -381,7 +386,7 @@ class AppManageService(
                         log.info("Updating ${it.name} finish")
 
                         if (it.autoRestart) {
-                            restart(id)
+                            restart(it)
                         }
 
                         appEventBus.post(AppUpdatedEvent(id))
