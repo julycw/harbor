@@ -49,7 +49,11 @@ class UpdateHistoryDTO(
         if (!backUpFileExist) {
             false
         } else {
-            updateFileMd5 == SecureUtil.md5().digestHex(Path.of(backupFilePath!!).toFile())
+            try {
+                updateFileMd5 == SecureUtil.md5().digestHex(Path.of(backupFilePath!!).toFile())
+            } catch (_: Exception) {
+                false
+            }
         }
     }
 
@@ -169,6 +173,7 @@ class UpdateHistoryService(
             }
 
             if (newState != null) {
+                record.state = newState
                 updateHistoryRepository.save(record)
                 if (newState == UpdateState.Success) {
                     var keep = 2
