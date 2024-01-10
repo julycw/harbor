@@ -158,7 +158,7 @@ class UpdateHistoryService(
             } else {
                 val inspect = dockerService.inspect(app.containerId!!)
                 val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
-                if (inspect.state.running == true && startAt?.before(addMinutes) == true) {
+                if (inspect.state.running == true && startAt?.after(record.updateTime) == true && startAt.before(addMinutes)) {
                     newState = UpdateState.Success
                     log.info("app ${app.name} is running last $minutes minutes, mark as Success!")
                 } else if (record.updateTime.before(addMinutes2)) {
