@@ -116,6 +116,15 @@ class UpdateHistoryService(
     @Subscribe
     fun handleAppUpdated(event: AppUpdatedEvent) {
         val app = appRepository.findByIdOrNull(event.appId) ?: return
+        val history = updateHistoryRepository.findByApplicationId(event.appId).filter { it.state == UpdateState.Checking }
+        for (record in history) {
+            try {
+                removeBackupFile(record)
+            } catch (_: Exception) {
+            }
+        }
+        updateHistoryRepository.deleteAll(history)
+
         val record = UpdateHistoryEntity(
             id = idGenerator.next(),
             applicationId = app.id!!,
@@ -143,11 +152,11 @@ class UpdateHistoryService(
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)
     fun checkUpdateState() {
         val now = Date()
-        val minutes = 10
-        val minutes2 = 15
         // 超过这个分钟数后容器状态始终保持为running，则标记为成功
-        val addMinutes = DateUtil.addMinutes(now, -minutes)
+        val minutes = 5
         // 超过这个分钟数后容器状态还没变为running，标记为更新失败
+        val minutes2 = 10
+        val addMinutes = DateUtil.addMinutes(now, -minutes)
         val addMinutes2 = DateUtil.addMinutes(now, -minutes2)
         val updateHistory = updateHistoryRepository.findAll().filter { it.state == UpdateState.Checking }
         for (record in updateHistory) {
@@ -184,10 +193,11 @@ class UpdateHistoryService(
                             removeBackupFile(updateHistoryEntity)
                         } else if (updateHistoryEntity.state == UpdateState.Success) {
                             if (keep > 0) {
-                                updateHistoryRepository.delete(updateHistoryEntity)
-                                removeBackupFile(updateHistoryEntity)
                                 keep--
+                                continue
                             }
+                            updateHistoryRepository.delete(updateHistoryEntity)
+                            removeBackupFile(updateHistoryEntity)
                         }
                     }
                 }
