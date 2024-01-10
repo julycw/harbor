@@ -36,26 +36,48 @@ import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Executors
 
+@ApiModel
 data class AppDTO(
+    @ApiModelProperty("ID")
     var id: Long?,
+    @ApiModelProperty("应用名称")
     var name: String,
+    @ApiModelProperty("容器ID", notes = "重新创建容器后会发生变化")
     var containerId: String?,
+    @ApiModelProperty("应用程序文件MD5")
     var md5: String?,
+    @ApiModelProperty("文件下载地址")
     var downloadAppUrl: String?,
+    @ApiModelProperty("本地部署目录")
     var localAppPath: String?,
+    @ApiModelProperty("授权信息")
     var certificationId: String?,
+    @ApiModelProperty("Basic Auth 用户名", notes = "建议用certificationId替换")
     var basicAuthUsername: String?,
+    @ApiModelProperty("Basic Auth 密码", notes = "建议用certificationId替换")
     var basicAuthPassword: String?,
+    @ApiModelProperty("版本号")
     var version: String?,
+    @ApiModelProperty("最近更新时间")
     var latestUpdateTime: Date?,
+    @ApiModelProperty("远程下载地址中的MD5")
     var remoteMd5: String?,
+    @ApiModelProperty("更新完后是否自动重启")
     var autoRestart: Boolean?,
+    @ApiModelProperty("更新时是否检查MD5")
     var checkMd5: Boolean?,
+    @ApiModelProperty("是否定时重启")
     var scheduleRestart: Boolean?,
+    @ApiModelProperty("定时重启时间")
     var restartAt: String?,
+    @ApiModelProperty("是否自动更新")
     var scheduleUpdate: Boolean?,
+    @ApiModelProperty("更新检查时间")
     var updateAt: String?,
-    var endpoint: String?
+    @ApiModelProperty("部署点位")
+    var endpoint: String?,
+    @ApiModelProperty("更新失败后是否自动回滚")
+    var autoRollbackWhenUpdateFail: Boolean?
 )
 
 data class BasicAuth(
@@ -146,7 +168,8 @@ class AppManageService(
                     restartAt = it.restartAt,
                     scheduleUpdate = it.scheduleUpdate,
                     updateAt = it.updateAt,
-                    endpoint = it.endpoint
+                    endpoint = it.endpoint,
+                    autoRollbackWhenUpdateFail = it.autoRollbackWhenUpdateFail
                 )
             },
             total = list.size.toLong()

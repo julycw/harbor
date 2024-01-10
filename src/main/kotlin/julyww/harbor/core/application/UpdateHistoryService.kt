@@ -7,10 +7,7 @@ import com.google.common.eventbus.Subscribe
 import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.IdGenerator
-import julyww.harbor.persist.app.AppRepository
-import julyww.harbor.persist.app.UpdateHistoryEntity
-import julyww.harbor.persist.app.UpdateHistoryRepository
-import julyww.harbor.persist.app.UpdateState
+import julyww.harbor.persist.app.*
 import julyww.harbor.props.HarborProps
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
@@ -69,6 +66,7 @@ class UpdateHistoryDTO(
 
 @Service
 class UpdateHistoryService(
+    private val appManageService: AppManageService,
     private val appRepository: AppRepository,
     private val updateHistoryRepository: UpdateHistoryRepository,
     private val dockerService: DockerService,
@@ -84,7 +82,8 @@ class UpdateHistoryService(
     }
 
     fun listByApp(appId: Long): List<UpdateHistoryDTO> {
-        return updateHistoryRepository.findByApplicationId(appId).sortedByDescending { it.updateTime }.map { UpdateHistoryDTO(it) }
+        return updateHistoryRepository.findByApplicationId(appId).sortedByDescending { it.updateTime }
+            .map { UpdateHistoryDTO(it) }
     }
 
 
@@ -113,21 +112,14 @@ class UpdateHistoryService(
     @Subscribe
     fun handleAppUpdated(event: AppUpdatedEvent) {
         val app = appRepository.findByIdOrNull(event.appId) ?: return
-        val history = updateHistoryRepository.findByApplicationId(event.appId)
-
-        var record = history.find { it.updateFileMd5 == app.md5 }?.apply {
-            updateTime = Date()
-            updateFileMd5 = app.md5!!
-            state = UpdateState.Checking
-            removeBackup(this)
-        } ?: UpdateHistoryEntity(
+        val record = UpdateHistoryEntity(
             id = idGenerator.next(),
             applicationId = app.id!!,
             updateTime = Date(),
             updateFileMd5 = app.md5!!,
-            state = UpdateState.Checking
+            state = UpdateState.Checking,
+            backupFilePath = doBackup(app.id!!)
         )
-        record.backupFilePath = doBackup(app.id!!)
         updateHistoryRepository.save(record)
     }
 
@@ -136,7 +128,10 @@ class UpdateHistoryService(
     fun handleAppDeleted(event: AppDeletedEvent) {
         val history = updateHistoryRepository.findByApplicationId(event.appId)
         for (record in history) {
-            removeBackup(record)
+            try {
+                removeBackupFile(record)
+            } catch (_: Exception) {
+            }
         }
         updateHistoryRepository.deleteAll(history)
     }
@@ -144,8 +139,10 @@ class UpdateHistoryService(
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)
     fun checkUpdateState() {
         val now = Date()
-        val addMinutes = DateUtil.addMinutes(now, -15)
-        val addMinutes2 = DateUtil.addMinutes(now, -30)
+        // 超过这个分钟数后容器状态始终保持为running，则标记为成功
+        val addMinutes = DateUtil.addMinutes(now, -10)
+        // 超过这个分钟数后容器状态还没变为running，标记为更新失败
+        val addMinutes2 = DateUtil.addMinutes(now, -15)
         val updateHistory = updateHistoryRepository.findAll().filter { it.state == UpdateState.Checking }
         for (record in updateHistory) {
             var newState: UpdateState? = null
@@ -157,8 +154,15 @@ class UpdateHistoryService(
                 val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
                 if (inspect.state.running == true && startAt?.before(addMinutes) == true) {
                     newState = UpdateState.Success
+                    log.info("app {${app.name}} is running last $addMinutes minutes, mark as Success!")
                 } else if (record.updateTime.before(addMinutes2)) {
                     newState = UpdateState.Fail
+                    log.warn("app {${app.name}} is not running $addMinutes2 minutes after updated, mark as Fail!")
+                    // 自动回滚
+                    if (app.autoRollbackWhenUpdateFail != false) {
+                        log.warn("app {${app.name}} is try to rollback...")
+                        rollbackToLatestSuccessVersion(app)
+                    }
                 }
             }
 
@@ -170,17 +174,29 @@ class UpdateHistoryService(
                         .sortedByDescending { it.updateTime }) {
                         if (updateHistoryEntity.state == UpdateState.Fail) {
                             updateHistoryRepository.delete(updateHistoryEntity)
-                            removeBackup(updateHistoryEntity)
+                            removeBackupFile(updateHistoryEntity)
                         } else if (updateHistoryEntity.state == UpdateState.Success) {
                             if (keep > 0) {
                                 updateHistoryRepository.delete(updateHistoryEntity)
-                                removeBackup(updateHistoryEntity)
+                                removeBackupFile(updateHistoryEntity)
                                 keep--
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    private fun rollbackToLatestSuccessVersion(app: AppEntity) {
+        val oldVersion = listByApp(app.id!!)
+            .filter { it.state == UpdateState.Success && it.rollbackAble }
+            .maxByOrNull { it.updateTime }
+        if (oldVersion != null) {
+            appManageService.rollback(app.id!!, oldVersion.id)
+            log.warn("app {${app.name}} rollback done!")
+        } else {
+            log.warn("app {${app.name}} rollback failed!")
         }
     }
 
@@ -225,7 +241,7 @@ class UpdateHistoryService(
         }
     }
 
-    private fun removeBackup(record: UpdateHistoryEntity) {
+    private fun removeBackupFile(record: UpdateHistoryEntity) {
         if (!record.backupFilePath.isNullOrBlank()) {
             Files.deleteIfExists(Path.of(record.backupFilePath!!))
         }

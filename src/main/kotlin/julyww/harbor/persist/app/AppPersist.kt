@@ -50,7 +50,10 @@ data class AppEntity(
     var updateAt: String? = null,
 
     // 点位
-    var endpoint: String? = null
+    var endpoint: String? = null,
+
+    // 更新失败时自动回滚
+    var autoRollbackWhenUpdateFail: Boolean? = true
 )
 
 interface AppRepository : PagingAndSortingRepository<AppEntity, Long>
