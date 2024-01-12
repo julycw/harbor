@@ -9,6 +9,7 @@ import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.IdGenerator
 import julyww.harbor.persist.app.*
 import julyww.harbor.props.HarborProps
+import julyww.harbor.utils.Environments
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.InitializingBean
 import org.springframework.data.repository.findByIdOrNull
@@ -76,7 +77,8 @@ class UpdateHistoryService(
     private val dockerService: DockerService,
     private val idGenerator: IdGenerator,
     private val appEventBus: AppEventBus,
-    private val harborProps: HarborProps
+    private val harborProps: HarborProps,
+    private val environments: Environments
 ) : InitializingBean {
 
     private val log = LoggerFactory.getLogger(this::class.java)
@@ -160,12 +162,12 @@ class UpdateHistoryService(
         val addMinutes2 = DateUtil.addMinutes(now, -minutes2)
         val updateHistory = updateHistoryRepository.findAll().filter { it.state == UpdateState.Checking }
         for (record in updateHistory) {
-
-
             var newState: UpdateState? = null
             val app = appRepository.findByIdOrNull(record.applicationId)
             if (app == null) {
                 newState = UpdateState.Fail
+            } else if (app.endpoint != environments.endpoint) {
+                continue
             } else {
                 val inspect = dockerService.inspect(app.containerId!!)
                 if (inspect == null) {

@@ -366,6 +366,7 @@ class AppManageService(
                         }
                         it.md5 = downloadedFileMd5
                         it.latestUpdateTime = now
+                        it.endpoint = environments.endpoint
                         appRepository.save(it)
                         log.info("Updating ${it.name} finish")
 
@@ -410,6 +411,7 @@ class AppManageService(
                         }
                         it.md5 = SecureUtil.md5().digestHex(file.bytes)
                         it.latestUpdateTime = now
+                        it.endpoint = environments.endpoint
                         appRepository.save(it)
                         log.info("Updating ${it.name} finish")
 
