@@ -470,9 +470,8 @@ class AppManageService(
                         appRepository.save(it)
                         log.info("Rollback ${it.name} finish")
 
-                        if (it.autoRestart) {
-                            restart(id)
-                        }
+                        // 回滚时强制重启
+                        restart(id)
                     } catch (e: Exception) {
                         log.error("Rollback ${it.name} failed: {}", e.message)
                         throw e
