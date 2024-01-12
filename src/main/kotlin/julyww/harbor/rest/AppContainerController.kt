@@ -68,6 +68,13 @@ class AppController(
     private val updateHistoryService: UpdateHistoryService
 ) {
 
+    @ApiOperation("查询应用详情")
+    @RequiresPermissions(SystemModuleList)
+    @GetMapping("{id}")
+    fun findApp(@PathVariable id: Long): AppDTO {
+        return appManageService.find(id)
+    }
+
     @ApiOperation("分页查询应用列表")
     @RequiresPermissions(SystemModuleList)
     @GetMapping

@@ -138,6 +138,32 @@ class AppManageService(
 
     private val executors = Executors.newCachedThreadPool()
 
+    fun find(id: Long): AppDTO {
+        val it = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
+        return AppDTO(
+            id = it.id,
+            name = it.name,
+            containerId = it.containerId,
+            md5 = it.md5 ?: localMd5(it),
+            downloadAppUrl = it.downloadAppUrl,
+            localAppPath = it.localAppPath,
+            certificationId = it.certificationId,
+            basicAuthUsername = it.basicAuthUsername,
+            basicAuthPassword = it.basicAuthPassword,
+            version = it.version,
+            latestUpdateTime = it.latestUpdateTime,
+            autoRestart = it.autoRestart,
+            remoteMd5 = remoteMd5(it),
+            checkMd5 = it.checkMd5,
+            scheduleRestart = it.scheduleRestart,
+            restartAt = it.restartAt,
+            scheduleUpdate = it.scheduleUpdate,
+            updateAt = it.updateAt,
+            endpoint = it.endpoint,
+            autoRollbackWhenUpdateFail = it.autoRollbackWhenUpdateFail
+        )
+    }
+
     fun list(query: AppQueryBean): PageResult<AppDTO> {
         var list = appRepository.findAll().toList()
         if (query.filterByEndpointMatch) {
