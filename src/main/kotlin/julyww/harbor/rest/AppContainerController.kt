@@ -3,6 +3,7 @@ package julyww.harbor.rest
 import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
 import cn.trustway.nb.common.auth.annotation.auth.RequiresPermissions
 import cn.trustway.nb.common.auth.annotation.ledger.WriteLedger
+import cn.trustway.nb.common.auth.exception.app.AppException
 import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Info
 import com.github.dockerjava.api.model.Statistics
@@ -54,7 +55,7 @@ class DockerController(
     @RequiresPermissions(SystemModuleList)
     @GetMapping("container/{id}/inspect")
     fun inspectContainer(@PathVariable id: String): InspectContainerResponse {
-        return dockerService.inspect(id)
+        return dockerService.inspect(id) ?: throw AppException(400, "container not exist")
     }
 }
 

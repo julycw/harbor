@@ -59,8 +59,12 @@ class DockerService(
             .getStats(10000)
     }
 
-    fun inspect(containerId: String): InspectContainerResponse {
-        return dockerClient.inspectContainerCmd(containerId).exec()
+    fun inspect(containerId: String): InspectContainerResponse? {
+        return try {
+            dockerClient.inspectContainerCmd(containerId).exec()
+        } catch (e: Exception) {
+            null
+        }
     }
 
 }

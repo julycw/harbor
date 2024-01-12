@@ -102,7 +102,7 @@ class UpdateHistoryService(
                 val record = UpdateHistoryEntity(
                     id = idGenerator.next(),
                     applicationId = app.id!!,
-                    updateTime = Date(),
+                    updateTime = app.latestUpdateTime ?: Date(),
                     updateFileMd5 = app.md5!!,
                     backupFilePath = doBackup(app.id!!),
                     state = UpdateState.Success
@@ -128,7 +128,7 @@ class UpdateHistoryService(
         val record = UpdateHistoryEntity(
             id = idGenerator.next(),
             applicationId = app.id!!,
-            updateTime = Date(),
+            updateTime = event.updateTime,
             updateFileMd5 = app.md5!!,
             state = UpdateState.Checking,
             backupFilePath = doBackup(app.id!!)
@@ -160,23 +160,32 @@ class UpdateHistoryService(
         val addMinutes2 = DateUtil.addMinutes(now, -minutes2)
         val updateHistory = updateHistoryRepository.findAll().filter { it.state == UpdateState.Checking }
         for (record in updateHistory) {
+
+
             var newState: UpdateState? = null
             val app = appRepository.findByIdOrNull(record.applicationId)
             if (app == null) {
                 newState = UpdateState.Fail
             } else {
                 val inspect = dockerService.inspect(app.containerId!!)
-                val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
-                if (inspect.state.running == true && startAt?.after(record.updateTime) == true && startAt.before(addMinutes)) {
-                    newState = UpdateState.Success
-                    log.info("app ${app.name} is running last $minutes minutes, mark as Success!")
-                } else if (record.updateTime.before(addMinutes2)) {
+                if (inspect == null) {
                     newState = UpdateState.Fail
-                    log.warn("app ${app.name} is not running $minutes2 minutes after updated, mark as Fail!")
-                    // 自动回滚
-                    if (app.autoRollbackWhenUpdateFail != false) {
-                        log.warn("app ${app.name} is try to rollback...")
-                        rollbackToLatestSuccessVersion(app)
+                } else {
+                    val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
+                    log.info(
+                        "checking app ${app.name}... running: ${inspect.state.running}, startAt: ${dateFormat(startAt)}, updateAt: ${dateFormat(record.updateTime)}"
+                    )
+                    if (inspect.state.running == true && startAt?.after(record.updateTime) == true && startAt.before(addMinutes)) {
+                        newState = UpdateState.Success
+                        log.info("app ${app.name} is running last $minutes minutes, mark as Success!")
+                    } else if (record.updateTime.before(addMinutes2)) {
+                        newState = UpdateState.Fail
+                        log.warn("app ${app.name} is not running $minutes2 minutes after updated, mark as Fail!")
+                        // 自动回滚
+                        if (app.autoRollbackWhenUpdateFail != false) {
+                            log.warn("app ${app.name} is try to rollback...")
+                            rollbackToLatestSuccessVersion(app)
+                        }
                     }
                 }
             }
@@ -218,10 +227,10 @@ class UpdateHistoryService(
     }
 
     private fun parseDockerDate(time: String): Date {
-        return DateUtil.convert2Date(
+        return DateUtil.addHours(DateUtil.convert2Date(
             time.substring(0, CHN_DATETIME_FORMAT.length).replace("T", " "),
             CHN_DATETIME_FORMAT
-        )
+        ), 8)
     }
 
     private fun doBackup(appId: Long): String? {
@@ -267,4 +276,6 @@ class UpdateHistoryService(
     override fun afterPropertiesSet() {
         appEventBus.register(this)
     }
+
+    private fun dateFormat(date: Date?) = date?.let { DateUtil.convert2String(it, CHN_DATETIME_FORMAT) }
 }

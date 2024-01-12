@@ -2,6 +2,7 @@ package julyww.harbor.core.application
 
 import com.google.common.eventbus.EventBus
 import org.springframework.stereotype.Component
+import java.util.*
 import java.util.concurrent.Executors
 
 
@@ -11,7 +12,10 @@ open class AppEvent(
 
 class AppBeforeUpdateEvent(appId: Long) : AppEvent(appId)
 
-class AppUpdatedEvent(appId: Long) : AppEvent(appId)
+class AppUpdatedEvent(
+    val updateTime: Date,
+    appId: Long
+) : AppEvent(appId)
 
 class AppDeletedEvent(appId: Long) : AppEvent(appId)
 

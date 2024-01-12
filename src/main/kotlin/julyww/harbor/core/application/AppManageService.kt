@@ -285,6 +285,7 @@ class AppManageService(
 
     fun update(id: Long, autoSkip: Boolean = false) {
         LockUtils.check(id)
+        val now = Date()
         val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
         val downloadUrl = app.downloadAppUrl ?: throw AppException(400, "未设定下载地址")
         val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
@@ -338,7 +339,7 @@ class AppManageService(
                             )
                         }
                         it.md5 = downloadedFileMd5
-                        it.latestUpdateTime = Date()
+                        it.latestUpdateTime = now
                         appRepository.save(it)
                         log.info("Updating ${it.name} finish")
 
@@ -346,7 +347,7 @@ class AppManageService(
                             restart(it)
                         }
 
-                        appEventBus.post(AppUpdatedEvent(id))
+                        appEventBus.post(AppUpdatedEvent(now, id))
 
                     } catch (e: Exception) {
                         log.error("Updating ${it.name} failed: {}", e.message)
@@ -358,6 +359,7 @@ class AppManageService(
 
     fun updateByUploadFile(id: Long, file: MultipartFile) {
         LockUtils.check(id)
+        val now = Date()
         val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
         val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
         executors.submit {
@@ -381,7 +383,7 @@ class AppManageService(
                             file.transferTo(Path.of(localPath))
                         }
                         it.md5 = SecureUtil.md5().digestHex(file.bytes)
-                        it.latestUpdateTime = Date()
+                        it.latestUpdateTime = now
                         appRepository.save(it)
                         log.info("Updating ${it.name} finish")
 
@@ -389,7 +391,7 @@ class AppManageService(
                             restart(it)
                         }
 
-                        appEventBus.post(AppUpdatedEvent(id))
+                        appEventBus.post(AppUpdatedEvent(now, id))
                     } catch (e: Exception) {
                         log.error("Updating ${it.name} failed: {}", e.message)
                         throw e
