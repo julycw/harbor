@@ -32,6 +32,8 @@ class UpdateHistoryEntity(
 
     var state: UpdateState,
 
+    var keep: Boolean? = null,
+
     var backupFilePath: String? = null
 
 )

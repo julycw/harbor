@@ -122,6 +122,20 @@ class AppController(
         return updateHistoryService.listByApp(id)
     }
 
+    @ApiOperation("永久保留更新记录的备份")
+    @RequiresPermissions(SystemModuleManage)
+    @PutMapping("{id}/update-history/{updateHistoryId}/keep-on")
+    fun setAppUpdateHistoryKeep(@PathVariable id: Long, @PathVariable updateHistoryId: Long) {
+        updateHistoryService.setKeep(updateHistoryId, true)
+    }
+
+    @ApiOperation("取消永久保留更新记录的备份")
+    @RequiresPermissions(SystemModuleManage)
+    @PutMapping("{id}/update-history/{updateHistoryId}/keep-off")
+    fun setAppUpdateHistoryKeepOff(@PathVariable id: Long, @PathVariable updateHistoryId: Long) {
+        updateHistoryService.setKeep(updateHistoryId, false)
+    }
+
     @ApiOperation("启动应用模块")
     @WriteLedger(description = "启动应用模块", targetId = "#id", targetType = AppEntity::class)
     @RequiresPermissions(SystemModuleManage)

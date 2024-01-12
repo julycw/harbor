@@ -1,6 +1,7 @@
 package julyww.harbor.core.application
 
 import cn.hutool.crypto.SecureUtil
+import cn.trustway.nb.common.auth.exception.app.AppException
 import cn.trustway.nb.util.DateUtil
 import cn.trustway.nb.util.DateUtil.CHN_DATETIME_FORMAT
 import com.google.common.eventbus.Subscribe
@@ -28,6 +29,7 @@ class UpdateHistoryDTO(
     var updateTime: Date,
     var updateFileMd5: String,
     var state: UpdateState,
+    var keep: Boolean?,
     var backupFilePath: String? = null
 ) {
 
@@ -64,6 +66,7 @@ class UpdateHistoryDTO(
         updateTime = entity.updateTime,
         updateFileMd5 = entity.updateFileMd5,
         state = entity.state,
+        keep = entity.keep,
         backupFilePath = entity.backupFilePath,
     )
 
@@ -85,6 +88,16 @@ class UpdateHistoryService(
 
     fun findById(id: Long): UpdateHistoryDTO {
         return updateHistoryRepository.findById(id).map { UpdateHistoryDTO(it) }.orElseThrow()
+    }
+
+    fun setKeep(id: Long, keep: Boolean) {
+        updateHistoryRepository.findById(id).ifPresent {
+            if (it.state != UpdateState.Success) {
+                throw AppException(400, "只有更新成功的记录才可以永久保留")
+            }
+            it.keep = keep
+            updateHistoryRepository.save(it)
+        }
     }
 
     fun listByApp(appId: Long): List<UpdateHistoryDTO> {
@@ -196,9 +209,11 @@ class UpdateHistoryService(
                 record.state = newState
                 updateHistoryRepository.save(record)
                 if (newState == UpdateState.Success) {
-                    var keep = 2
-                    for (updateHistoryEntity in updateHistoryRepository.findByApplicationId(record.applicationId)
-                        .sortedByDescending { it.updateTime }) {
+                    var keep = 3
+                    for (updateHistoryEntity in updateHistoryRepository.findByApplicationId(record.applicationId).sortedByDescending { it.updateTime }) {
+                        if (updateHistoryEntity.keep == true) {
+                            continue
+                        }
                         if (updateHistoryEntity.state == UpdateState.Fail) {
                             updateHistoryRepository.delete(updateHistoryEntity)
                             removeBackupFile(updateHistoryEntity)
