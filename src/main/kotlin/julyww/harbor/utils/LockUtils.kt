@@ -8,7 +8,7 @@ object LockUtils {
     fun check(target: Any) {
         val targetId = target.toString()
         if (appUpdateState[targetId] != null && appUpdateState[targetId] != Thread.currentThread().id) {
-            error("正在更新，请勿重复操作")
+            error("正在执行动作，请勿重复发起请求")
         }
     }
 
