@@ -228,7 +228,11 @@ class AppManageService(
             }
             entity
         }
-        data.endpoint = environments.endpoint
+        if (!data.containerId.isNullOrBlank()) {
+            if (dockerService.inspect(data.containerId!!) != null) {
+                data.endpoint = environments.endpoint
+            }
+        }
         return appRepository.save(data).id
     }
 
