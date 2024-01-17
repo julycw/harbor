@@ -131,7 +131,8 @@ class UpdateHistoryService(
     @Subscribe
     fun handleAppUpdated(event: AppUpdatedEvent) {
         val app = appRepository.findByIdOrNull(event.appId) ?: return
-        val history = updateHistoryRepository.findByApplicationId(event.appId).filter { it.state == UpdateState.Checking }
+        val history =
+            updateHistoryRepository.findByApplicationId(event.appId).filter { it.state == UpdateState.Checking }
         for (record in history) {
             try {
                 removeBackupFile(record)
@@ -188,9 +189,17 @@ class UpdateHistoryService(
                 } else {
                     val startAt = inspect.state.startedAt?.let { parseDockerDate(it) }
                     log.info(
-                        "checking app ${app.name}... running: ${inspect.state.running}, startAt: ${dateFormat(startAt)}, updateAt: ${dateFormat(record.updateTime)}"
+                        "checking app ${app.name}... running: ${inspect.state.running}, startAt: ${dateFormat(startAt)}, updateAt: ${
+                            dateFormat(
+                                record.updateTime
+                            )
+                        }"
                     )
-                    if (inspect.state.running == true && startAt?.after(record.updateTime) == true && startAt.before(addMinutes)) {
+                    if (
+                        inspect.state.running == true &&
+                        startAt?.before(addMinutes) == true &&
+                        record.updateTime.before(addMinutes)
+                    ) {
                         newState = UpdateState.Success
                         log.info("app ${app.name} is running last $minutes minutes, mark as Success!")
                     } else if (record.updateTime.before(addMinutes2)) {
@@ -210,7 +219,8 @@ class UpdateHistoryService(
                 updateHistoryRepository.save(record)
                 if (newState == UpdateState.Success) {
                     var keep = 3
-                    for (updateHistoryEntity in updateHistoryRepository.findByApplicationId(record.applicationId).sortedByDescending { it.updateTime }) {
+                    for (updateHistoryEntity in updateHistoryRepository.findByApplicationId(record.applicationId)
+                        .sortedByDescending { it.updateTime }) {
                         if (updateHistoryEntity.keep == true) {
                             continue
                         }
@@ -244,10 +254,12 @@ class UpdateHistoryService(
     }
 
     private fun parseDockerDate(time: String): Date {
-        return DateUtil.addHours(DateUtil.convert2Date(
-            time.substring(0, CHN_DATETIME_FORMAT.length).replace("T", " "),
-            CHN_DATETIME_FORMAT
-        ), 8)
+        return DateUtil.addHours(
+            DateUtil.convert2Date(
+                time.substring(0, CHN_DATETIME_FORMAT.length).replace("T", " "),
+                CHN_DATETIME_FORMAT
+            ), 8
+        )
     }
 
     private fun doBackup(appId: Long): String? {
