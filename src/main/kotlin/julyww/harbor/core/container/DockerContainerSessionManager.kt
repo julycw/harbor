@@ -51,34 +51,28 @@ class DockerContainerExecSession(
             .withStdIn(pipedInputStream)
             .exec(object : Adapter<Frame>() {
 
+                override fun onStart(stream: Closeable?) {
+                    log.info("session $sessionId start!")
+                }
+
                 override fun onNext(frame: Frame) {
                     consumer(String(frame.payload))
                 }
 
                 override fun onError(throwable: Throwable) {
-                    log.info("error!", throwable)
+                    log.info("session $sessionId error! {}", throwable.message)
                 }
 
                 override fun onComplete() {
-                    log.info("complete!")
+                    log.info("session $sessionId complete!")
                 }
             })
     }
 
     fun close() {
-        try {
-            pipedOutputStream.write(3) // ^C
-            exec("\nexit\n")
-        } finally {
-            try {
-                pipedOutputStream.close()
-            } catch (_: Exception) {
-            }
-            try {
-                pipedInputStream.close()
-            } catch (_: Exception) {
-            }
-        }
+        log.info("try close session $sessionId ...")
+        pipedOutputStream.write(3) // ^C
+        exec("\nexit\n")
     }
 
     fun exec(command: String) {
