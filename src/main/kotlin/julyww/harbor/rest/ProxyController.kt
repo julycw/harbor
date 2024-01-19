@@ -1,11 +1,11 @@
 package julyww.harbor.rest
 
 import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
+import cn.trustway.nb.common.auth.exception.app.AppException
 import com.netflix.appinfo.InstanceInfo
 import com.netflix.discovery.EurekaClient
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
-import julyww.harbor.rest.global.TargetNotRegisteredException
 import org.springframework.cloud.gateway.mvc.ProxyExchange
 import org.springframework.http.ResponseEntity
 import org.springframework.util.StringUtils
@@ -120,12 +120,12 @@ class ActuatorProxyController(
     }
 
     private fun targetIpAndPort(instanceId: String?): IPAndPort {
-        if (!StringUtils.hasText(instanceId)) throw TargetNotRegisteredException("proxy target id not provided")
+        if (!StringUtils.hasText(instanceId)) throw AppException(400, "proxy target id not provided")
         return (eurekaClient.getInstancesById(instanceId).firstOrNull() as? InstanceInfo)?.let {
             IPAndPort(
                 it.ipAddr, it.port.toString()
             )
-        } ?: throw TargetNotRegisteredException("proxy target $instanceId not registered")
+        } ?: throw AppException(400, "proxy target $instanceId not registered")
     }
 
 }
