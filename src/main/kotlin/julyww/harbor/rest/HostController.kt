@@ -39,7 +39,7 @@ class HostController(
     @RequiresPermissions(SystemHostList)
     @GetMapping("query")
     fun findHostByIP(@RequestParam ip: String): HostEntity {
-        return hostService.findByIP(ip) ?: error("指定IP的服务器不存在")
+        return hostService.findByIP(ip) ?: throw AppException(400, "指定IP的服务器不存在")
     }
 
     @ApiOperation("分页查询服务器列表")
@@ -91,20 +91,20 @@ class HostController(
                 sshSessionManager.createSession(
                     username = username,
                     password = password,
-                    host = host.ip ?: error("必须先配置IP地址"),
+                    host = host.ip ?: throw AppException(400, "必须先配置IP地址"),
                     port = host.port ?: 22
                 ).sessionId
             } catch (e: Exception) {
-                error(e.message ?: e.javaClass.name)
+                throw AppException(400, e.message ?: e.javaClass.name)
             }
-        } ?: error("未找到相关配置")
+        } ?: throw AppException(400, "未找到相关配置")
     }
 
     @RequiresPermissions(SystemHostManage)
     @ApiOperation("打开SSH会话", notes = "该接口为SSE接口，数据包内容为Stdout/Stderr内容")
     @GetMapping("ssh-session/{id}/ssh")
     fun createSshChannel(@PathVariable id: String): ResponseEntity<SseEmitter> {
-        val session = sshSessionManager.getSession(id) ?: error("session not exist")
+        val session = sshSessionManager.getSession(id) ?: throw AppException(400, "session not exist")
         val emitter = SseEmitter(0L)
         emitter.onCompletion {
             sshSessionManager.closeSession(session.sessionId)
@@ -126,7 +126,7 @@ class HostController(
     @RequiresPermissions(SystemHostManage)
     @PostMapping("ssh-session/{id}/command")
     fun exec(@PathVariable id: String, @RequestBody request: ExecSshCommandRequest) {
-        val session = sshSessionManager.getSession(id) ?: error("session 已关闭")
+        val session = sshSessionManager.getSession(id) ?: throw AppException(400, "session 已关闭")
         session.exec(request.command)
     }
 }

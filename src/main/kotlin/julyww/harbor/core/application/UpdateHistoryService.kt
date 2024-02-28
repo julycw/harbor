@@ -4,6 +4,8 @@ import cn.hutool.crypto.SecureUtil
 import cn.trustway.nb.common.auth.exception.app.AppException
 import cn.trustway.nb.util.DateUtil
 import cn.trustway.nb.util.DateUtil.CHN_DATETIME_FORMAT
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import com.google.common.eventbus.Subscribe
 import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.core.container.DockerService
@@ -19,9 +21,12 @@ import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.name
+
+val fileMd5Cache: Cache<String, String> = CacheBuilder.newBuilder().expireAfterWrite(Duration.ofHours(24)).build()
 
 class UpdateHistoryDTO(
     var id: Long,
@@ -32,7 +37,6 @@ class UpdateHistoryDTO(
     var keep: Boolean?,
     var backupFilePath: String? = null
 ) {
-
 
     @get:ApiModelProperty("备份文件是否存在")
     val backUpFileExist: Boolean by lazy {
@@ -53,7 +57,11 @@ class UpdateHistoryDTO(
             false
         } else {
             try {
-                updateFileMd5 == SecureUtil.md5().digestHex(Path.of(backupFilePath!!).toFile())
+                updateFileMd5 == backupFilePath?.let {
+                    fileMd5Cache.get(it) {
+                        SecureUtil.md5().digestHex(Path.of(it).toFile())
+                    }
+                }
             } catch (_: Exception) {
                 false
             }

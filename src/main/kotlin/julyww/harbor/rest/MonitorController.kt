@@ -1,6 +1,7 @@
 package julyww.harbor.rest
 
 import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
+import cn.trustway.nb.common.auth.exception.app.AppException
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import julyww.harbor.core.monitor.Application
@@ -34,7 +35,7 @@ class MonitorController(
     @ApiOperation("获取指定微服务详情")
     @GetMapping("application/{name}")
     fun getApplication(@PathVariable name: String): Application {
-        return monitorService.getApplication(name) ?: error("应用不存在")
+        return monitorService.getApplication(name) ?: throw AppException(400, "应用不存在")
     }
 
 }
