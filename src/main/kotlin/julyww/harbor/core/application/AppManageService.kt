@@ -503,9 +503,9 @@ class AppManageService(
     fun remoteMd5(appEntity: AppEntity): String? {
         val downloadUrl = appEntity.downloadAppUrl ?: return null
         val md5Url = "$downloadUrl.md5"
-        val (username, password) = getBasicAuth(appEntity)
-        val httpRequest: HttpEntity<Void> = HttpEntity(CommonUtils.basicAuth(username, password))
         return try {
+            val (username, password) = getBasicAuth(appEntity)
+            val httpRequest: HttpEntity<Void> = HttpEntity(CommonUtils.basicAuth(username, password))
             val response: ResponseEntity<String> = restTemplate.exchange(
                 md5Url,
                 HttpMethod.GET,
