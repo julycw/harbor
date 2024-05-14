@@ -37,6 +37,14 @@ data class FileContent(
     val content: String?
 )
 
+
+@ApiModel
+data class FileExist(
+
+    @ApiModelProperty
+    val exist: Boolean
+)
+
 @Service
 class DiskFileService {
 
@@ -79,6 +87,14 @@ class DiskFileService {
             StandardOpenOption.WRITE,
             StandardOpenOption.TRUNCATE_EXISTING
         )
+    }
+
+    fun exist(path: String, fileName: String?): FileExist {
+        var filePath = Path.of(path)
+        if (!fileName.isNullOrBlank()) {
+            filePath = filePath.resolve(fileName)
+        }
+        return FileExist(Files.exists(filePath))
     }
 
     private fun getFilePath(path: String, fileName: String): Path {

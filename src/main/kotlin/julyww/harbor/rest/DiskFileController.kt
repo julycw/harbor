@@ -9,6 +9,7 @@ import io.swagger.annotations.ApiOperation
 import julyww.harbor.core.host.DiskFileService
 import julyww.harbor.core.host.File
 import julyww.harbor.core.host.FileContent
+import julyww.harbor.core.host.FileExist
 import julyww.harbor.remote.SystemHostManage
 import org.springframework.web.bind.annotation.*
 
@@ -68,6 +69,16 @@ class DiskFileController(
         @RequestParam fileName: String
     ): FileContent {
         return diskFileService.read(path, fileName)
+    }
+
+    @RequiresPermissions(SystemHostManage)
+    @ApiOperation("判定文件是否存在")
+    @GetMapping("exist")
+    fun exist(
+        @RequestParam path: String,
+        @RequestParam(required = false) fileName: String?
+    ): FileExist {
+        return diskFileService.exist(path, fileName)
     }
 
     @RequiresPermissions(SystemHostManage)

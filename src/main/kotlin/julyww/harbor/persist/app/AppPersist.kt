@@ -53,7 +53,10 @@ data class AppEntity(
     var endpoint: String? = null,
 
     // 更新失败时自动回滚
-    var autoRollbackWhenUpdateFail: Boolean? = true
+    var autoRollbackWhenUpdateFail: Boolean? = true,
+
+    // 重启命令
+    var reloadCmd: String? = null,
 )
 
 interface AppRepository : PagingAndSortingRepository<AppEntity, Long>

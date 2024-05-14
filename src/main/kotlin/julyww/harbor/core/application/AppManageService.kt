@@ -10,6 +10,7 @@ import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import julyww.harbor.common.PageResult
 import julyww.harbor.core.certification.CertificationService
+import julyww.harbor.core.container.DockerContainerSessionManager
 import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.IdGenerator
 import julyww.harbor.persist.app.AppEntity
@@ -77,7 +78,9 @@ data class AppDTO(
     @ApiModelProperty("部署点位")
     var endpoint: String?,
     @ApiModelProperty("更新失败后是否自动回滚")
-    var autoRollbackWhenUpdateFail: Boolean?
+    var autoRollbackWhenUpdateFail: Boolean?,
+    @ApiModelProperty("重启命令")
+    var reloadCmd: String?
 )
 
 data class BasicAuth(
@@ -107,7 +110,8 @@ class AppManageService(
     private val certificationService: CertificationService,
     private val updateHistoryRepository: UpdateHistoryRepository,
     private val appEventBus: AppEventBus,
-    private val environments: Environments
+    private val environments: Environments,
+    private val dockerContainerSessionManager: DockerContainerSessionManager
 ) {
 
     private val log = LoggerFactory.getLogger(AppManageService::class.java)
@@ -160,7 +164,8 @@ class AppManageService(
             scheduleUpdate = it.scheduleUpdate,
             updateAt = it.updateAt,
             endpoint = it.endpoint,
-            autoRollbackWhenUpdateFail = it.autoRollbackWhenUpdateFail
+            autoRollbackWhenUpdateFail = it.autoRollbackWhenUpdateFail,
+            reloadCmd = it.reloadCmd
         )
     }
 
@@ -195,7 +200,8 @@ class AppManageService(
                     scheduleUpdate = it.scheduleUpdate,
                     updateAt = it.updateAt,
                     endpoint = it.endpoint,
-                    autoRollbackWhenUpdateFail = it.autoRollbackWhenUpdateFail
+                    autoRollbackWhenUpdateFail = it.autoRollbackWhenUpdateFail,
+                    reloadCmd = it.reloadCmd
                 )
             },
             total = list.size.toLong()
@@ -203,37 +209,15 @@ class AppManageService(
     }
 
     fun save(entity: AppEntity): Long? {
-        val targetId = entity.id
-        val data = if (targetId == null) {
+        if (entity.id == null) {
             entity.id = idGenerator.next()
-            entity
-        } else {
-            appRepository.findByIdOrNull(targetId)?.let {
-                it.name = entity.name
-                it.containerId = entity.containerId
-                it.downloadAppUrl = entity.downloadAppUrl
-                it.localAppPath = entity.localAppPath
-                it.certificationId = entity.certificationId
-                it.basicAuthUsername = entity.basicAuthUsername
-                it.basicAuthPassword = entity.basicAuthPassword
-                it.autoRestart = entity.autoRestart
-                it.checkMd5 = entity.checkMd5
-                it.scheduleRestart = entity.scheduleRestart
-                it.restartAt = entity.restartAt
-                it.scheduleUpdate = entity.scheduleUpdate
-                it.updateAt = entity.updateAt
-                appRepository.save(it)
-            } ?: let {
-                entity.id = idGenerator.next()
-            }
-            entity
         }
-        if (!data.containerId.isNullOrBlank()) {
-            if (dockerService.inspect(data.containerId!!) != null) {
-                data.endpoint = environments.endpoint
+        if (!entity.containerId.isNullOrBlank()) {
+            if (dockerService.inspect(entity.containerId!!) != null) {
+                entity.endpoint = environments.endpoint
             }
         }
-        return appRepository.save(data).id
+        return appRepository.save(entity).id
     }
 
     fun delete(id: Long) {
@@ -299,17 +283,37 @@ class AppManageService(
 
 
     fun restart(it: AppEntity) {
-        it.containerId?.let { containerId ->
-            if (containerId.isNotBlank()) {
-                log.info("Restarting ${it.name}...")
+        val containerId = it.containerId
+        if (containerId.isNullOrBlank()) {
+            throw AppException(400, "未配置对应容器，无法重启")
+        }
+        log.info("Restarting ${it.name}...")
+        try {
+            val reloadCmd = it.reloadCmd?.trim()
+            if (reloadCmd.isNullOrBlank()) {
+                dockerClient.restartContainerCmd(containerId).exec()
+            } else {
+                val session = dockerContainerSessionManager.createSession(containerId, "sh")
                 try {
-                    dockerClient.restartContainerCmd(containerId).exec()
-                    log.info("Restart ${it.name} finish!")
+                    var output = ""
+                    session.attach {
+                        output += it
+                    }
+
+                    log.info("Restart by command: '$reloadCmd' ...")
+                    session.exec(reloadCmd + "\n")
+                    Thread.sleep(5000)
+                    log.info("Restart Output: $output")
                 } catch (e: Exception) {
-                    log.info("Restart ${it.name} failed: {}", e.message)
                     throw e
+                } finally {
+                    session.close()
                 }
             }
+            log.info("Restart ${it.name} finish!")
+        } catch (e: Exception) {
+            log.info("Restart ${it.name} failed: {}", e.message)
+            throw e
         }
     }
 
@@ -358,7 +362,9 @@ class AppManageService(
                         }
 
                         if (downloadUrl.endsWith(".tar")) {
-                            CommonUtils.tarUnarchive(response.body!!, localPath)
+                            CommonUtils.tarUnArchive(response.body!!, localPath)
+                        } else if (downloadUrl.endsWith(".zip")) {
+                            CommonUtils.zipUnArchive(response.body!!, localPath)
                         } else {
                             Files.write(
                                 Path.of(localPath),
@@ -409,8 +415,10 @@ class AppManageService(
                         }
 
                         if (file.originalFilename!!.endsWith(".tar")) {
-                            CommonUtils.tarUnarchive(file.bytes, localPath)
-                        } else {
+                            CommonUtils.tarUnArchive(file.bytes, localPath)
+                        } else if (file.originalFilename!!.endsWith(".zip")) {
+                            CommonUtils.zipUnArchive(file.bytes, localPath)
+                        }  else {
                             file.transferTo(Path.of(localPath))
                         }
                         it.md5 = SecureUtil.md5().digestHex(file.bytes)
@@ -462,8 +470,10 @@ class AppManageService(
                         val backupFIle = Path.of(updateHistory.backupFilePath!!).toFile()
 
                         if (backupFIle.name.endsWith(".tar")) {
-                            CommonUtils.tarUnarchive(backupFIle.readBytes(), localPath)
-                        } else {
+                            CommonUtils.tarUnArchive(backupFIle.readBytes(), localPath)
+                        } else if (backupFIle.name.endsWith(".zip")) {
+                            CommonUtils.zipUnArchive(backupFIle.readBytes(), localPath)
+                        }  else {
                             Files.copy(
                                 backupFIle.toPath(),
                                 Path.of(localPath),

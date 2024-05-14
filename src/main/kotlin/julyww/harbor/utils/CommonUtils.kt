@@ -2,6 +2,8 @@ package julyww.harbor.utils
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
 import org.springframework.http.HttpHeaders
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -30,7 +32,7 @@ class CommonUtils {
         /**
          * tar 文件解压
          */
-        fun tarUnarchive(file: ByteArray, outputDir: String) {
+        fun tarUnArchive(file: ByteArray, outputDir: String) {
             ByteArrayInputStream(file).use { fileInputStream ->
                 val tarArchiveInputStream = TarArchiveInputStream(fileInputStream)
                 var entry: TarArchiveEntry? = null
@@ -45,6 +47,32 @@ class CommonUtils {
                     Files.write(
                         outputFile.toPath(),
                         tarArchiveInputStream.readAllBytes(),
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.TRUNCATE_EXISTING
+                    )
+                }
+            }
+        }
+
+        /**
+         * zip文件解压
+         */
+        fun zipUnArchive(file: ByteArray, outputDir: String) {
+            ByteArrayInputStream(file).use { fileInputStream ->
+                val archiveInputStream = ZipArchiveInputStream(fileInputStream)
+                var entry: ZipArchiveEntry? = null
+                while (archiveInputStream.nextZipEntry?.also { entry = it } != null) {
+                    if (entry!!.isDirectory) {
+                        continue
+                    }
+                    val outputFile = File(Paths.get(outputDir, entry!!.name).toUri())
+                    if (!outputFile.parentFile.exists()) {
+                        outputFile.parentFile.mkdirs()
+                    }
+                    Files.write(
+                        outputFile.toPath(),
+                        archiveInputStream.readAllBytes(),
                         StandardOpenOption.WRITE,
                         StandardOpenOption.CREATE,
                         StandardOpenOption.TRUNCATE_EXISTING

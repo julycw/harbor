@@ -17,6 +17,13 @@ import java.io.PipedOutputStream
 import java.time.Duration
 import java.util.*
 
+enum class SessionState {
+    Init,
+    Connecting,
+    Started,
+    Completed,
+    Error
+}
 
 class DockerContainerExecSession(
     containerId: String,
@@ -25,6 +32,9 @@ class DockerContainerExecSession(
 ) {
 
     val sessionId = UUID.randomUUID().toString()
+
+    @Volatile
+    private var state = SessionState.Init
 
     private val log = LoggerFactory.getLogger(DockerContainerExecSession::class.java)
     private val exec: ExecCreateCmdResponse = dockerClient
@@ -43,6 +53,7 @@ class DockerContainerExecSession(
     fun attach(consumer: (String) -> Unit) {
 
         pipedInputStream.connect(pipedOutputStream)
+        this.state = SessionState.Connecting
 
         dockerClient
             .execStartCmd(exec.id)
@@ -53,6 +64,7 @@ class DockerContainerExecSession(
 
                 override fun onStart(stream: Closeable?) {
                     log.info("session $sessionId start!")
+                    this@DockerContainerExecSession.state = SessionState.Started
                 }
 
                 override fun onNext(frame: Frame) {
@@ -61,10 +73,12 @@ class DockerContainerExecSession(
 
                 override fun onError(throwable: Throwable) {
                     log.info("session $sessionId error! {}", throwable.message)
+                    this@DockerContainerExecSession.state = SessionState.Error
                 }
 
                 override fun onComplete() {
                     log.info("session $sessionId complete!")
+                    this@DockerContainerExecSession.state = SessionState.Completed
                 }
             })
     }
@@ -76,6 +90,14 @@ class DockerContainerExecSession(
     }
 
     fun exec(command: String) {
+        var wait = 0
+        while (state != SessionState.Started) {
+            Thread.sleep(100)
+            wait += 100
+            if (wait > 10000) {
+                throw AppException(500, "timeout")
+            }
+        }
         pipedOutputStream.let {
             val ow = OutputStreamWriter(it)
             ow.write(command)
