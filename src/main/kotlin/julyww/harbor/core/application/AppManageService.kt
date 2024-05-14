@@ -354,7 +354,7 @@ class AppManageService(
                             }
                         }
 
-                        if (it.autoRestart && it.containerId != environments.dockerContainerId) {
+                        if (it.autoRestart && it.reloadCmd.isNullOrBlank() && it.containerId != environments.dockerContainerId) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
@@ -407,7 +407,7 @@ class AppManageService(
 
                     try {
 
-                        if (it.autoRestart && it.containerId != environments.dockerContainerId) {
+                        if (it.autoRestart && it.reloadCmd.isNullOrBlank() && it.containerId != environments.dockerContainerId) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
@@ -460,7 +460,7 @@ class AppManageService(
 
                     try {
 
-                        if (it.autoRestart && it.containerId != environments.dockerContainerId) {
+                        if (it.autoRestart && it.reloadCmd.isNullOrBlank() && it.containerId != environments.dockerContainerId) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
