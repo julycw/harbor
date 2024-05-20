@@ -4,6 +4,7 @@ import cn.trustway.nb.common.auth.exception.app.AppException
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import org.springframework.stereotype.Service
+import java.io.InputStream
 import java.nio.file.*
 import java.util.*
 import kotlin.io.path.*
@@ -70,6 +71,10 @@ class DiskFileService {
             Path.of(path).resolve(fileName),
             Path.of(newPath).resolve(newFileName)
         )
+    }
+
+    fun readFile(path: String, fileName: String): java.io.File {
+        return getFilePath(path, fileName).toFile()
     }
 
     fun read(path: String, fileName: String): FileContent {

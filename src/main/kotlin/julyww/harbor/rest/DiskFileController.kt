@@ -11,6 +11,10 @@ import julyww.harbor.core.host.File
 import julyww.harbor.core.host.FileContent
 import julyww.harbor.core.host.FileExist
 import julyww.harbor.remote.SystemHostManage
+import org.springframework.core.io.FileSystemResource
+import org.springframework.core.io.Resource
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 
@@ -69,6 +73,22 @@ class DiskFileController(
         @RequestParam fileName: String
     ): FileContent {
         return diskFileService.read(path, fileName)
+    }
+
+    @RequiresPermissions(SystemHostManage)
+    @ApiOperation("下载文件内容")
+    @GetMapping("download")
+    fun download(
+        @RequestParam path: String,
+        @RequestParam fileName: String
+    ): ResponseEntity<Resource> {
+        val file = diskFileService.readFile(path, fileName)
+        val resource = FileSystemResource(file)
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .contentLength(file.length())
+            .header("Content-Disposition", ("attachment; filename=\"" + file.getName()) + "\"")
+            .body(resource)
     }
 
     @RequiresPermissions(SystemHostManage)
