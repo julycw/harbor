@@ -1,7 +1,10 @@
 package julyww.harbor.rest
 
 import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
+import cn.trustway.nb.common.auth.annotation.auth.RequiresPermissions
 import cn.trustway.nb.common.auth.exception.app.AppException
+import cn.trustway.nb.common.auth.service.role.Permission
+import cn.trustway.nb.common.auth.service.role.Permissions
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import julyww.harbor.core.monitor.Application
@@ -12,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+@RequiresPermissions(Permissions.SUPREME_ALL)
 @RequiresAuthentication
 @Api(tags = ["服务监控"])
 @RequestMapping("monitor")

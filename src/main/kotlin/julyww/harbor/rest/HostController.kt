@@ -1,5 +1,6 @@
 package julyww.harbor.rest
 
+import cn.trustway.nb.common.auth.annotation.auth.RequiresAuthentication
 import cn.trustway.nb.common.auth.annotation.auth.RequiresPermissions
 import cn.trustway.nb.common.auth.annotation.ledger.WriteLedger
 import cn.trustway.nb.common.auth.exception.app.AppException
@@ -24,7 +25,7 @@ data class OutputBound(
     val content: String
 )
 
-@RequiresPermissions
+@RequiresAuthentication
 @Api(tags = ["主机管理"])
 @RequestMapping("/host")
 @RestController
