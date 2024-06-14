@@ -10,12 +10,13 @@ import io.swagger.annotations.ApiOperation
 import julyww.harbor.core.monitor.Application
 import julyww.harbor.core.monitor.MonitorService
 import julyww.harbor.core.monitor.Server
+import julyww.harbor.remote.SystemHostList
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-@RequiresPermissions(Permissions.SUPREME_ALL)
+@RequiresPermissions(SystemHostList)
 @RequiresAuthentication
 @Api(tags = ["服务监控"])
 @RequestMapping("monitor")
