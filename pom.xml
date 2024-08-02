@@ -19,7 +19,7 @@
         <auth.version>1.2.16</auth.version>
         <spring-cloud.version>2021.0.8</spring-cloud.version>
         <docker-java.version>3.3.4</docker-java.version>
-        <jsch.version>0.1.55</jsch.version>
+        <jsch.version>0.2.18</jsch.version>
     </properties>
     <dependencies>
         <dependency>
@@ -103,7 +103,7 @@
             <version>${docker-java.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.jcraft</groupId>
+            <groupId>com.github.mwiede</groupId>
             <artifactId>jsch</artifactId>
             <version>${jsch.version}</version>
         </dependency>
