@@ -49,7 +49,7 @@ class CertificationService(
         return dto
     }
 
-    fun findById(id: String): CertificationDTO {
+    fun findById(id: String): CertificationDTO? {
         return certificationRepository.findById(id).map { entity ->
             CertificationDTO(
                 id = entity.id,
@@ -58,7 +58,7 @@ class CertificationService(
                 username = entity.username?.let { JasyptUtils.decrypt(it, password) },
                 password = entity.password?.let { JasyptUtils.decrypt(it, password) },
             )
-        }.orElseThrow { AppException(400, "授权凭证(${id})不存在") }
+        }.orElse(null)
     }
 
 }

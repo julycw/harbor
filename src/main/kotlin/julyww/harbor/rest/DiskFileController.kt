@@ -41,6 +41,15 @@ data class MoveFileRequest(
 )
 
 
+@ApiModel
+data class MakeDirRequest(
+    @ApiModelProperty
+    val path: String,
+    @ApiModelProperty
+    val dirName: String,
+)
+
+
 @Api(tags = ["文件管理"])
 @RequiresAuthentication
 @RequestMapping("disk-file")
@@ -63,6 +72,15 @@ class DiskFileController(
         @RequestBody request: MoveFileRequest
     ) {
         return diskFileService.mv(request.path, request.fileName, request.newPath, request.newFileName)
+    }
+
+    @RequiresPermissions(SystemHostManage)
+    @ApiOperation("创建目录")
+    @PostMapping("mkdir")
+    fun mkdir(
+        @RequestBody request: MakeDirRequest
+    ) {
+        return diskFileService.mkdir(request.path, request.dirName)
     }
 
     @RequiresPermissions(SystemHostManage)

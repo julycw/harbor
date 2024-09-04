@@ -6,6 +6,7 @@ import io.swagger.annotations.ApiModelProperty
 import org.springframework.stereotype.Service
 import java.io.InputStream
 import java.nio.file.*
+import java.nio.file.attribute.FileAttribute
 import java.util.*
 import kotlin.io.path.*
 import kotlin.streams.toList
@@ -73,6 +74,10 @@ class DiskFileService {
         )
     }
 
+    fun mkdir(path: String, dirName: String) {
+        Files.createDirectory(Path.of(path).resolve(dirName))
+    }
+
     fun readFile(path: String, fileName: String): java.io.File {
         return getFilePath(path, fileName).toFile()
     }
@@ -89,6 +94,7 @@ class DiskFileService {
         Files.writeString(
             Path.of(path).resolve(fileName),
             content,
+            StandardOpenOption.CREATE,
             StandardOpenOption.WRITE,
             StandardOpenOption.TRUNCATE_EXISTING
         )

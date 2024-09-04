@@ -23,6 +23,7 @@ import org.apache.http.impl.client.HttpClients
 import org.slf4j.LoggerFactory
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory
@@ -257,20 +258,28 @@ class AppManageService(
 
     fun start(id: Long) {
         appRepository.findByIdOrNull(id)?.let {
-            it.containerId?.let { containerId ->
-                if (containerId.isNotBlank()) {
-                    dockerClient.startContainerCmd(containerId).exec()
-                }
+            start(it)
+        }
+    }
+
+    fun start(app: AppEntity) {
+        app.containerId?.let { containerId ->
+            if (containerId.isNotBlank()) {
+                dockerClient.startContainerCmd(containerId).exec()
             }
         }
     }
 
     fun stop(id: Long) {
         appRepository.findByIdOrNull(id)?.let {
-            it.containerId?.let { containerId ->
-                if (containerId.isNotBlank()) {
-                    dockerClient.stopContainerCmd(containerId).exec()
-                }
+            stop(it)
+        }
+    }
+
+    fun stop(it: AppEntity) {
+        it.containerId?.let { containerId ->
+            if (containerId.isNotBlank()) {
+                dockerClient.stopContainerCmd(containerId).exec()
             }
         }
     }
@@ -318,76 +327,51 @@ class AppManageService(
     }
 
     fun update(id: Long, autoSkip: Boolean = false) {
-        LockUtils.check(id)
-        val now = Date()
-        val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
-        val downloadUrl = app.downloadAppUrl ?: throw AppException(400, "未设定下载地址")
-        val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
         executors.submit {
             LockUtils.lock(id) {
-                appRepository.findByIdOrNull(id)?.let {
-                    val remoteMd5 = remoteMd5(it)
-                    if (autoSkip && remoteMd5 != null && remoteMd5 == it.md5) {
+                appRepository.findByIdOrNull(id)?.let { app ->
+                    val now = Date()
+                    val downloadUrl = app.downloadAppUrl ?: throw AppException(400, "未设定下载地址")
+                    val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
+                    val remoteMd5 = remoteMd5(app)
+                    if (autoSkip && remoteMd5 != null && remoteMd5 == app.md5) {
                         return@let
                     }
-
-
-                    log.info("Updating ${it.name}...")
+                    log.info("Updating ${app.name}...")
                     appEventBus.post(AppBeforeUpdateEvent(id))
 
                     try {
-                        val (username, password) = getBasicAuth(it)
-                        val httpRequest: HttpEntity<Void> = HttpEntity(CommonUtils.basicAuth(username, password))
+                        val basicAuth = getBasicAuth(app)
+                        val httpRequest: HttpEntity<Void> = if (basicAuth != null) {
+                            val (username, password) = basicAuth
+                            HttpEntity(CommonUtils.basicAuth(username, password))
+                        } else {
+                            HttpEntity(HttpHeaders())
+                        }
 
-                        log.info("Updating ${it.name}, begin download...")
+                        log.info("Updating ${app.name}, begin download...")
                         val response: ResponseEntity<ByteArray> = downloadRestTemplate.exchange(
                             downloadUrl,
                             HttpMethod.GET,
                             httpRequest,
                             ByteArray::class
                         )
-                        log.info("Updating ${it.name}, download success")
+                        log.info("Updating ${app.name}, download success")
                         val downloadedFileMd5 = SecureUtil.md5().digestHex(response.body)
-                        if (it.checkMd5 == true) {
+                        if (app.checkMd5 == true) {
                             if (remoteMd5 != downloadedFileMd5) {
                                 throw AppException(400, "MD5校验失败，请重试")
                             }
                         }
+                        app.md5 = downloadedFileMd5
 
-                        if (it.autoRestart && it.reloadCmd.isNullOrBlank() && it.containerId != environments.dockerContainerId) {
-                            try {
-                                stop(id)
-                            } catch (ignore: Exception) {
-                            }
-                        }
-
-                        if (downloadUrl.endsWith(".tar")) {
-                            CommonUtils.tarUnArchive(response.body!!, localPath)
-                        } else if (downloadUrl.endsWith(".zip")) {
-                            CommonUtils.zipUnArchive(response.body!!, localPath)
-                        } else {
-                            Files.write(
-                                Path.of(localPath),
-                                response.body!!,
-                                StandardOpenOption.WRITE,
-                                StandardOpenOption.CREATE,
-                                StandardOpenOption.TRUNCATE_EXISTING
-                            )
-                        }
-                        it.md5 = downloadedFileMd5
-                        it.latestUpdateTime = now
-                        it.endpoint = environments.endpoint
-                        appRepository.save(it)
-                        log.info("Updating ${it.name} finish")
-
-                        if (it.autoRestart) {
-                            restart(it)
-                        }
+                        doUpdate(app, downloadUrl, response.body!!, localPath)
+                        log.info("Updating ${app.name} finish")
 
                         appEventBus.post(AppUpdatedEvent(now, id))
 
                     } catch (e: Exception) {
-                        log.error("Updating ${it.name} failed: {}", e.message)
+                        log.error("Updating ${app.name} failed: {}", e.message)
                     }
                 }
             }
@@ -395,72 +379,43 @@ class AppManageService(
     }
 
     fun updateByUploadFile(id: Long, file: MultipartFile) {
-        LockUtils.check(id)
-        val now = Date()
-        val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
-        val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
-        executors.submit {
-            LockUtils.lock(id) {
-                appRepository.findByIdOrNull(id)?.let {
-                    log.info("Updating ${it.name}...")
-                    appEventBus.post(AppBeforeUpdateEvent(id))
-
-                    try {
-
-                        if (it.autoRestart && it.reloadCmd.isNullOrBlank() && it.containerId != environments.dockerContainerId) {
-                            try {
-                                stop(id)
-                            } catch (ignore: Exception) {
-                            }
-                        }
-
-                        if (file.originalFilename!!.endsWith(".tar")) {
-                            CommonUtils.tarUnArchive(file.bytes, localPath)
-                        } else if (file.originalFilename!!.endsWith(".zip")) {
-                            CommonUtils.zipUnArchive(file.bytes, localPath)
-                        }  else {
-                            file.transferTo(Path.of(localPath))
-                        }
-                        it.md5 = SecureUtil.md5().digestHex(file.bytes)
-                        it.latestUpdateTime = now
-                        it.endpoint = environments.endpoint
-                        appRepository.save(it)
-                        log.info("Updating ${it.name} finish")
-
-                        if (it.autoRestart) {
-                            restart(it)
-                        }
-
-                        appEventBus.post(AppUpdatedEvent(now, id))
-                    } catch (e: Exception) {
-                        log.error("Updating ${it.name} failed: {}", e.message)
-                        throw e
-                    }
+        LockUtils.lock(id) {
+            appRepository.findByIdOrNull(id)?.let { app ->
+                val now = Date()
+                val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
+                log.info("Updating ${app.name}...")
+                appEventBus.post(AppBeforeUpdateEvent(id))
+                try {
+                    app.md5 = SecureUtil.md5().digestHex(file.bytes)
+                    doUpdate(app, file.originalFilename!!, file.bytes, localPath)
+                    log.info("Updating ${app.name} finish")
+                    appEventBus.post(AppUpdatedEvent(now, id))
+                } catch (e: Exception) {
+                    log.error("Updating ${app.name} failed: {}", e.message)
+                    throw AppException(500, e.message)
                 }
             }
         }
     }
 
     fun rollback(id: Long, updateHistoryId: Long) {
-        LockUtils.check(id)
-        val app = appRepository.findByIdOrNull(id) ?: throw AppException(400, "应用不存在")
-        val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
-        val updateHistory = updateHistoryRepository.findById(updateHistoryId).map { UpdateHistoryDTO(it) }
-            .orElseThrow { AppException(400, "更新历史不存在") }
-        if (updateHistory.applicationId != app.id) {
-            throw AppException(400, "更新历史不存在")
-        }
-        if (!updateHistory.rollbackAble) {
-            throw AppException(400, "无法回滚")
-        }
         executors.submit {
             LockUtils.lock(id) {
-                appRepository.findByIdOrNull(id)?.let {
-                    log.info("Rollback ${it.name} to ${updateHistory.updateTime}...")
+                appRepository.findByIdOrNull(id)?.let { app ->
+                    val localPath = app.localAppPath ?: throw AppException(400, "未设定部署地址")
+                    val updateHistory = updateHistoryRepository.findById(updateHistoryId).map { UpdateHistoryDTO(it) }
+                        .orElseThrow { AppException(400, "更新历史不存在") }
+                    if (updateHistory.applicationId != app.id) {
+                        throw AppException(400, "更新历史不存在")
+                    }
+                    if (!updateHistory.rollbackAble) {
+                        throw AppException(400, "无法回滚")
+                    }
+                    log.info("Rollback ${app.name} to ${updateHistory.updateTime}...")
 
                     try {
 
-                        if (it.autoRestart && it.reloadCmd.isNullOrBlank() && it.containerId != environments.dockerContainerId) {
+                        if (app.autoRestart && app.reloadCmd.isNullOrBlank() && app.containerId != environments.dockerContainerId) {
                             try {
                                 stop(id)
                             } catch (ignore: Exception) {
@@ -473,7 +428,7 @@ class AppManageService(
                             CommonUtils.tarUnArchive(backupFIle.readBytes(), localPath)
                         } else if (backupFIle.name.endsWith(".zip")) {
                             CommonUtils.zipUnArchive(backupFIle.readBytes(), localPath)
-                        }  else {
+                        } else {
                             Files.copy(
                                 backupFIle.toPath(),
                                 Path.of(localPath),
@@ -481,15 +436,15 @@ class AppManageService(
                                 StandardCopyOption.COPY_ATTRIBUTES
                             )
                         }
-                        it.md5 = updateHistory.updateFileMd5
-                        it.latestUpdateTime = Date()
-                        appRepository.save(it)
-                        log.info("Rollback ${it.name} finish")
+                        app.md5 = updateHistory.updateFileMd5
+                        app.latestUpdateTime = Date()
+                        appRepository.save(app)
+                        log.info("Rollback ${app.name} finish")
 
                         // 回滚时强制重启
                         restart(id)
                     } catch (e: Exception) {
-                        log.error("Rollback ${it.name} failed: {}", e.message)
+                        log.error("Rollback ${app.name} failed: {}", e.message)
                         throw e
                     }
                 }
@@ -514,8 +469,13 @@ class AppManageService(
         val downloadUrl = appEntity.downloadAppUrl ?: return null
         val md5Url = "$downloadUrl.md5"
         return try {
-            val (username, password) = getBasicAuth(appEntity)
-            val httpRequest: HttpEntity<Void> = HttpEntity(CommonUtils.basicAuth(username, password))
+            val basicAuth = getBasicAuth(appEntity)
+            val httpRequest: HttpEntity<Void> = if (basicAuth != null) {
+                val (username, password) = basicAuth
+                HttpEntity(CommonUtils.basicAuth(username, password))
+            } else {
+                HttpEntity(HttpHeaders())
+            }
             val response: ResponseEntity<String> = restTemplate.exchange(
                 md5Url,
                 HttpMethod.GET,
@@ -530,12 +490,42 @@ class AppManageService(
         }
     }
 
-    private fun getBasicAuth(app: AppEntity): BasicAuth {
+    private fun doUpdate(app: AppEntity, updateFileName: String, fileContent: ByteArray, targetLocalPath: String) {
+        if (app.autoRestart && app.reloadCmd.isNullOrBlank() && app.containerId != environments.dockerContainerId) {
+            try {
+                stop(app)
+            } catch (ignore: Exception) {
+            }
+        }
+
+        if (updateFileName.endsWith(".tar")) {
+            CommonUtils.tarUnArchive(fileContent, targetLocalPath)
+        } else if (updateFileName.endsWith(".zip")) {
+            CommonUtils.zipUnArchive(fileContent, targetLocalPath)
+        } else {
+            Files.write(
+                Path.of(targetLocalPath),
+                fileContent,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+            )
+        }
+        app.endpoint = environments.endpoint
+        app.latestUpdateTime = Date()
+        appRepository.save(app)
+
+        if (app.autoRestart) {
+            restart(app)
+        }
+    }
+
+    private fun getBasicAuth(app: AppEntity): BasicAuth? {
         val username: String
         val password: String
         if (app.basicAuthUsername.isNullOrBlank() || app.basicAuthPassword.isNullOrBlank()) {
             val certificationId = if (app.certificationId.isNullOrBlank()) "default" else app.certificationId!!
-            val cert = certificationService.findById(certificationId)
+            val cert = certificationService.findById(certificationId) ?: return null
             username = cert.username ?: throw AppException(400, "授权信息中的用户名为空")
             password = cert.password ?: throw AppException(400, "授权信息中的密码为空")
         } else {
