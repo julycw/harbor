@@ -1,3 +1,5 @@
+harbor:
+  auto-register-apps-cron: '-'
 server:
   servlet:
     context-path: /harbor

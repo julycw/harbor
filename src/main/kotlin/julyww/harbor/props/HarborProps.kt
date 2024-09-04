@@ -10,4 +10,12 @@ class HarborProps {
     var backupDir: String = "/backups"
 
     var endpoint: String? = null
+
+    var autoRegisterAppsOnStartUp: Boolean = false
+
+    var autoRegisterAppsCron: String = "-"
+
+    var deploymentBaseDir = "/app/home/"
+
+    var updateFileDownloadUrlPrefix = "https://govfun.com:9990/deploy/"
 }

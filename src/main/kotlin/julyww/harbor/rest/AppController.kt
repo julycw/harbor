@@ -20,7 +20,8 @@ import java.util.*
 @RestController
 class AppController(
     private val appManageService: AppManageService,
-    private val updateHistoryService: UpdateHistoryService
+    private val updateHistoryService: UpdateHistoryService,
+    private val appInitService: AppInitService
 ) {
 
     @ApiOperation("查询应用详情")
@@ -138,6 +139,12 @@ class AppController(
     @PostMapping("{id}/update-upload")
     fun updateAppByUploadFile(@PathVariable id: Long, file: MultipartFile) {
         appManageService.updateByUploadFile(id, file)
+    }
+
+    @ApiOperation("基于应用列表自动注册应用")
+    @PostMapping("auto-register-apps")
+    fun autoRegisterApps() {
+        appInitService.autoRegisterApps()
     }
 
 }
