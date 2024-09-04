@@ -25,6 +25,9 @@ object JasyptUtils {
     }
 
     fun decrypt(data: String, password: String): String {
+        if (data.startsWith("ENC(") && data.endsWith(")")) {
+            return stringEncryptor(password).decrypt(data.substring(4, data.length - 1))
+        }
         return stringEncryptor(password).decrypt(data)
     }
 }

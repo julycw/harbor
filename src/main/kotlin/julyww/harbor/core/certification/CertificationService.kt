@@ -57,7 +57,20 @@ class CertificationService(
     }
 
     fun findById(id: String): CertificationDTO? {
-        return certificationRepository.findById(id).map { entity -> toDTO(entity) }.orElse(null)
+        return certificationRepository.findById(id).map { entity ->
+            toDTO(entity).apply {
+                this.username?.let { username ->
+                    if (username.startsWith("ENC(") && username.endsWith(")")) {
+                        this.username = JasyptUtils.decrypt(username, PASSWORD)
+                    }
+                }
+                this.password?.let { password ->
+                    if (password.startsWith("ENC(") && password.endsWith(")")) {
+                        this.password = JasyptUtils.decrypt(password, PASSWORD)
+                    }
+                }
+            }
+        }.orElse(null)
     }
 
     private fun toDTO(entity: CertificationEntity): CertificationDTO {

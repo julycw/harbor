@@ -11,5 +11,8 @@ class JasyptUtilsTest {
         val encrypt = JasyptUtils.encrypt(v, password)
         val decrypt = JasyptUtils.decrypt(encrypt, password)
         Assertions.assertEquals(v, decrypt)
+
+        val decrypt2 = JasyptUtils.decrypt("ENC($encrypt)", password)
+        Assertions.assertEquals(v, decrypt2)
     }
 }
