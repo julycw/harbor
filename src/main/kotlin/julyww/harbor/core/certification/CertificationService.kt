@@ -20,7 +20,7 @@ class CertificationService(
     private val certificationRepository: CertificationRepository
 ) {
 
-    private final val password = "harbor"
+    private final val PASSWORD = "harbor"
 
     fun listAll(): List<CertificationDTO> {
         return certificationRepository.findAll().toList().map { toDTO(it) }
@@ -32,11 +32,11 @@ class CertificationService(
         }
 
         if (!dto.username.isNullOrBlank()) {
-            dto.username = JasyptUtils.encrypt(dto.username!!, password)
+            dto.username = JasyptUtils.encrypt(dto.username!!, PASSWORD)
         }
 
         if (!dto.password.isNullOrBlank()) {
-            dto.password = JasyptUtils.encrypt(dto.password!!, password)
+            dto.password = JasyptUtils.encrypt(dto.password!!, PASSWORD)
         }
 
         certificationRepository.save(
@@ -44,8 +44,8 @@ class CertificationService(
                 id = dto.id!!,
                 name = dto.name,
                 type = dto.type,
-                username = dto.username?.let { JasyptUtils.encrypt(it, password) },
-                password = dto.password?.let { JasyptUtils.encrypt(it, password) },
+                username = dto.username,
+                password = dto.password,
             )
         )
 
@@ -65,8 +65,8 @@ class CertificationService(
             id = entity.id,
             name = entity.name,
             type = entity.type,
-            username = entity.username?.let { JasyptUtils.decrypt(it, password) },
-            password = entity.password?.let { JasyptUtils.decrypt(it, password) },
+            username = entity.username?.let { JasyptUtils.decrypt(it, PASSWORD) },
+            password = entity.password?.let { JasyptUtils.decrypt(it, PASSWORD) },
         )
     }
 

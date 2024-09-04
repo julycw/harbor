@@ -30,13 +30,17 @@ class Environments(
                     }
                 }
             }
-        } catch (e: IOException) {
+        } catch (_: IOException) {
         }
         containerId
     }
 
     val dockerDaemonId: String? by lazy {
-        dockerService.sys().id
+        try {
+            dockerService.sys().id
+        } catch (e: Exception) {
+            null
+        }
     }
 
     val endpoint: String? by lazy {

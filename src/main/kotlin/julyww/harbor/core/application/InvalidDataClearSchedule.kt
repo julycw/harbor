@@ -24,7 +24,13 @@ class InvalidDataClearSchedule(
 
         if (appList.isEmpty()) return
 
-        val containers = dockerService.list().groupBy { it.id }.mapValues { it.value.first() }
+        val containerList = try {
+            dockerService.list()
+        } catch (e: Exception) {
+            return
+        }
+
+        val containers = containerList.groupBy { it.id }.mapValues { it.value.first() }
 
         for (app in appList) {
             val container = containers[app.containerId]

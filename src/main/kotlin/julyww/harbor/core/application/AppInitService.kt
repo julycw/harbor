@@ -5,6 +5,7 @@ import cn.trustway.nb.util.HashUtil
 import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.props.HarborProps
+import org.slf4j.LoggerFactory
 import org.springframework.boot.CommandLineRunner
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
@@ -128,6 +129,8 @@ class AppInitService(
     private val dockerService: DockerService
 ) : CommandLineRunner {
 
+    private val log = LoggerFactory.getLogger(AppInitService::class.java)
+
     fun autoRegisterApps() {
 
         val alreadyExistApps = appManageService.list(
@@ -138,7 +141,12 @@ class AppInitService(
             )
         )
 
-        val containers = dockerService.list()
+        val containers = try {
+            dockerService.list()
+        } catch (e: Exception) {
+            return
+        }
+
         for (container in containers) {
             val containerName = container.name.removePrefix("/")
             for (appTemplate in appTemplates) {
@@ -155,6 +163,7 @@ class AppInitService(
                         null
                     }
 
+                    log.info("auto register app [${appTemplate.name}]")
                     appManageService.save(
                         AppEntity(
                             id = null,

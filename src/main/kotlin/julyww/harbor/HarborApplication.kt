@@ -44,8 +44,7 @@ class HarborApplication(
         return e.message
     }
 
-    override fun run(vararg args: String?) {
-
+    private fun init() {
         // 将app中的下载授权信息进行提取，统一迁移到授权模块中
         try {
             val appList = appRepository.findAll().filter {
@@ -71,6 +70,11 @@ class HarborApplication(
 
         } catch (ignore: Exception) {
         }
+    }
+
+    override fun run(vararg args: String?) {
+
+//        init()
 
         log.info("************************************************")
         log.info("Endpoint is: ${environments.endpoint}")

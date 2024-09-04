@@ -176,7 +176,11 @@ class AppManageService(
             list = list.filter { it.endpoint.isNullOrBlank() || it.endpoint == environments.endpoint }
         }
         if (query.filterByContainerExist) {
-            val containers = dockerService.list().map { it.id }.toSet()
+            val containers = try {
+                dockerService.list().map { it.id }.toSet()
+            } catch (e: Exception) {
+                emptyList()
+            }
             list = list.filter { it.containerId.isNullOrBlank() || containers.contains(it.containerId) }
         }
         return PageResult(
