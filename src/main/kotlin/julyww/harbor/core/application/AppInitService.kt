@@ -68,8 +68,8 @@ val appTemplates = listOf(
     ),
     AppTemplate(
         name = "业务查询模块",
-        fileName = "query-service.jar",
-        matchContainerNames = setOf("query-service"),
+        fileName = "sz-query-service.jar",
+        matchContainerNames = setOf("sz-query-service"),
         autoUpdateAt = "04:45:00"
     ),
     AppTemplate(
