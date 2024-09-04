@@ -148,7 +148,7 @@ class AppController(
     fun autoRegisterApps(
         @RequestParam(required = false) deploymentBaseDir: String?,
         @RequestParam(required = false) updateFileDownloadUrlPrefix: String?,
-        @RequestParam(required = false, defaultValue = "false") override: Boolean?,
+        @RequestParam(required = false, defaultValue = "false") override: Boolean,
     ) {
         appInitService.autoRegisterApps(
             deploymentBaseDir = deploymentBaseDir ?: harborProps.deploymentBaseDir,
