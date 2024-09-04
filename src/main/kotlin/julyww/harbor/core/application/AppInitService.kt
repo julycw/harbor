@@ -1,7 +1,6 @@
 package julyww.harbor.core.application
 
 import cn.hutool.crypto.digest.MD5
-import cn.trustway.nb.util.HashUtil
 import julyww.harbor.core.container.DockerService
 import julyww.harbor.persist.app.AppEntity
 import julyww.harbor.props.HarborProps
@@ -131,9 +130,13 @@ class AppInitService(
 
     private val log = LoggerFactory.getLogger(AppInitService::class.java)
 
-    fun autoRegisterApps() {
+    fun autoRegisterApps(
+        deploymentBaseDir: String = harborProps.deploymentBaseDir,
+        updateFileDownloadUrlPrefix: String = harborProps.updateFileDownloadUrlPrefix,
+        override: Boolean = false
+    ) {
 
-        val alreadyExistApps = appManageService.list(
+        val currentApps = appManageService.list(
             AppQueryBean(
                 filterByEndpointMatch = true,
                 filterByContainerExist = true,
@@ -151,11 +154,18 @@ class AppInitService(
             val containerName = container.name.removePrefix("/")
             for (appTemplate in appTemplates) {
                 if (appTemplate.matchContainerNames.any { containerName == it }) {
-                    if (alreadyExistApps.list.any { it.containerId == container.id }) {
-                        break
+                    val exists = currentApps.list.filter { it.containerId == container.id }
+                    if (exists.isNotEmpty()) {
+                        if (override) {
+                            exists.forEach {
+                                appManageService.delete(it.id!!)
+                            }
+                        } else {
+                            break
+                        }
                     }
 
-                    val localPath = Path(harborProps.deploymentBaseDir).resolve(appTemplate.fileName)
+                    val localPath = Path(deploymentBaseDir).resolve(appTemplate.fileName)
                     val md5 = try {
                         val file = localPath.toFile()
                         MD5.create().digestHex(file)
@@ -170,7 +180,7 @@ class AppInitService(
                             name = appTemplate.name,
                             containerId = container.id,
                             md5 = md5,
-                            downloadAppUrl = harborProps.updateFileDownloadUrlPrefix + appTemplate.fileName,
+                            downloadAppUrl = updateFileDownloadUrlPrefix + appTemplate.fileName,
                             localAppPath = localPath.pathString,
                             certificationId = "default",
                             basicAuthUsername = null,

@@ -8,6 +8,7 @@ import io.swagger.annotations.ApiOperation
 import julyww.harbor.common.PageResult
 import julyww.harbor.core.application.*
 import julyww.harbor.persist.app.AppEntity
+import julyww.harbor.props.HarborProps
 import julyww.harbor.remote.SystemModuleList
 import julyww.harbor.remote.SystemModuleManage
 import org.springframework.web.bind.annotation.*
@@ -21,7 +22,8 @@ import java.util.*
 class AppController(
     private val appManageService: AppManageService,
     private val updateHistoryService: UpdateHistoryService,
-    private val appInitService: AppInitService
+    private val appInitService: AppInitService,
+    private val harborProps: HarborProps
 ) {
 
     @ApiOperation("查询应用详情")
@@ -143,8 +145,16 @@ class AppController(
 
     @ApiOperation("基于应用列表自动注册应用")
     @PostMapping("auto-register-apps")
-    fun autoRegisterApps() {
-        appInitService.autoRegisterApps()
+    fun autoRegisterApps(
+        @RequestParam(required = false) deploymentBaseDir: String?,
+        @RequestParam(required = false) updateFileDownloadUrlPrefix: String?,
+        @RequestParam(required = false, defaultValue = "false") override: Boolean?,
+    ) {
+        appInitService.autoRegisterApps(
+            deploymentBaseDir = deploymentBaseDir ?: harborProps.deploymentBaseDir,
+            updateFileDownloadUrlPrefix = updateFileDownloadUrlPrefix ?: harborProps.updateFileDownloadUrlPrefix,
+            override = override
+        )
     }
 
 }
