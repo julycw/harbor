@@ -16,6 +16,7 @@ import org.springframework.core.io.Resource
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import kotlin.io.path.ExperimentalPathApi
 
 
 @ApiModel
@@ -46,7 +47,16 @@ data class MakeDirRequest(
     @ApiModelProperty
     val path: String,
     @ApiModelProperty
-    val dirName: String,
+    val fileName: String,
+)
+
+
+@ApiModel
+data class RemoveRequest(
+    @ApiModelProperty
+    val path: String,
+    @ApiModelProperty
+    val fileName: String,
 )
 
 
@@ -74,13 +84,23 @@ class DiskFileController(
         return diskFileService.mv(request.path, request.fileName, request.newPath, request.newFileName)
     }
 
+    @ExperimentalPathApi
+    @RequiresPermissions(SystemHostManage)
+    @ApiOperation("删除文件（递归）")
+    @PostMapping("remove")
+    fun remove(
+        @RequestBody request: RemoveRequest
+    ) {
+        return diskFileService.remove(request.path, request.fileName)
+    }
+
     @RequiresPermissions(SystemHostManage)
     @ApiOperation("创建目录")
     @PostMapping("mkdir")
     fun mkdir(
         @RequestBody request: MakeDirRequest
     ) {
-        return diskFileService.mkdir(request.path, request.dirName)
+        return diskFileService.mkdir(request.path, request.fileName)
     }
 
     @RequiresPermissions(SystemHostManage)

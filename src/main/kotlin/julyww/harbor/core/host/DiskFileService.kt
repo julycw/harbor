@@ -4,9 +4,7 @@ import cn.trustway.nb.common.auth.exception.app.AppException
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import org.springframework.stereotype.Service
-import java.io.InputStream
 import java.nio.file.*
-import java.nio.file.attribute.FileAttribute
 import java.util.*
 import kotlin.io.path.*
 import kotlin.streams.toList
@@ -74,8 +72,13 @@ class DiskFileService {
         )
     }
 
-    fun mkdir(path: String, dirName: String) {
-        Files.createDirectory(Path.of(path).resolve(dirName))
+    @ExperimentalPathApi
+    fun remove(path: String, fileName: String) {
+        Path.of(path).resolve(fileName).deleteRecursively()
+    }
+
+    fun mkdir(path: String, fileName: String) {
+        Files.createDirectory(Path.of(path).resolve(fileName))
     }
 
     fun readFile(path: String, fileName: String): java.io.File {
