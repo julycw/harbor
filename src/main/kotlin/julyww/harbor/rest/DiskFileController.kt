@@ -26,7 +26,9 @@ data class SaveFileRequest(
     @ApiModelProperty
     val fileName: String,
     @ApiModelProperty
-    val content: String
+    val content: String,
+    @ApiModelProperty
+    val encrypt: Boolean?
 )
 
 @ApiModel
@@ -143,7 +145,7 @@ class DiskFileController(
     @ApiOperation("保存文件内容")
     @PostMapping("save-content")
     fun save(@RequestBody request: SaveFileRequest) {
-        return diskFileService.save(request.path, request.fileName, request.content)
+        return diskFileService.save(request.path, request.fileName, request.content, request.encrypt ?: false)
     }
 
 }

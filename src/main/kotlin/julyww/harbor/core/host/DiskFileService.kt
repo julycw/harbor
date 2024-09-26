@@ -3,6 +3,8 @@ package julyww.harbor.core.host
 import cn.trustway.nb.common.auth.exception.app.AppException
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import lujing.common.data.annotation.Base64EncryptDesensitize
+import lujing.common.data.desensitization.Base64EncryptDesensitization
 import org.springframework.stereotype.Service
 import java.nio.file.*
 import java.util.*
@@ -33,8 +35,12 @@ data class File(
 @ApiModel
 data class FileContent(
 
+    @Base64EncryptDesensitize
     @ApiModelProperty
-    val content: String?
+    val content: String?,
+
+    @ApiModelProperty
+    val encrypt: Boolean?
 )
 
 
@@ -90,13 +96,13 @@ class DiskFileService {
         if (filePath.fileSize() > 1024 * 256) { // 256KB
             throw AppException(400, "暂不支持查看大于256KB的文件")
         }
-        return FileContent(Files.readString(Path.of(path).resolve(fileName)))
+        return FileContent(Files.readString(Path.of(path).resolve(fileName)), true)
     }
 
-    fun save(path: String, fileName: String, content: String) {
+    fun save(path: String, fileName: String, content: String, contentIsEncrypt: Boolean) {
         Files.writeString(
             Path.of(path).resolve(fileName),
-            content,
+            if (contentIsEncrypt) Base64EncryptDesensitization.restore(content) else content,
             StandardOpenOption.CREATE,
             StandardOpenOption.WRITE,
             StandardOpenOption.TRUNCATE_EXISTING
