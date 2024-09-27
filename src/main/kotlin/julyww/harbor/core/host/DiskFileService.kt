@@ -37,7 +37,10 @@ data class File(
 data class FileContent(
 
     @ApiModelProperty
-    val content: String?
+    val content: String?,
+
+    @ApiModelProperty
+    val encrypt: Boolean
 )
 
 
@@ -94,7 +97,7 @@ class DiskFileService {
             throw AppException(400, "暂不支持查看大于256KB的文件")
         }
         val content = Files.readString(Path.of(path).resolve(fileName))
-        return FileContent(if (encrypt) Base64EncryptDesensitization().desensitize(content) else content)
+        return FileContent(if (encrypt) Base64EncryptDesensitization().desensitize(content) else content, encrypt)
     }
 
     fun save(path: String, fileName: String, content: String, contentIsEncrypt: Boolean) {
