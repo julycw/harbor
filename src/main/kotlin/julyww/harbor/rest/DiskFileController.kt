@@ -110,9 +110,10 @@ class DiskFileController(
     @GetMapping("read-content")
     fun read(
         @RequestParam path: String,
-        @RequestParam fileName: String
+        @RequestParam fileName: String,
+        @RequestParam(defaultValue = "false") encrypt: Boolean
     ): FileContent {
-        return diskFileService.read(path, fileName)
+        return diskFileService.read(path, fileName, encrypt)
     }
 
     @RequiresPermissions(SystemHostManage)

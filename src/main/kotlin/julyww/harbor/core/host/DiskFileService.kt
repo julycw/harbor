@@ -3,10 +3,11 @@ package julyww.harbor.core.host
 import cn.trustway.nb.common.auth.exception.app.AppException
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
-import lujing.common.data.annotation.Base64EncryptDesensitize
 import lujing.common.data.desensitization.Base64EncryptDesensitization
 import org.springframework.stereotype.Service
-import java.nio.file.*
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.*
 import kotlin.io.path.*
 import kotlin.streams.toList
@@ -35,12 +36,8 @@ data class File(
 @ApiModel
 data class FileContent(
 
-    @Base64EncryptDesensitize
     @ApiModelProperty
-    val content: String?,
-
-    @ApiModelProperty
-    val encrypt: Boolean?
+    val content: String?
 )
 
 
@@ -91,12 +88,13 @@ class DiskFileService {
         return getFilePath(path, fileName).toFile()
     }
 
-    fun read(path: String, fileName: String): FileContent {
+    fun read(path: String, fileName: String, encrypt: Boolean): FileContent {
         val filePath = getFilePath(path, fileName)
         if (filePath.fileSize() > 1024 * 256) { // 256KB
             throw AppException(400, "暂不支持查看大于256KB的文件")
         }
-        return FileContent(Files.readString(Path.of(path).resolve(fileName)), true)
+        val content = Files.readString(Path.of(path).resolve(fileName))
+        return FileContent(if (encrypt) Base64EncryptDesensitization().desensitize(content) else content)
     }
 
     fun save(path: String, fileName: String, content: String, contentIsEncrypt: Boolean) {
