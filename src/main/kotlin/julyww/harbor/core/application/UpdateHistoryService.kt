@@ -126,7 +126,7 @@ class UpdateHistoryService(
                     id = idGenerator.next(),
                     applicationId = app.id!!,
                     updateTime = app.latestUpdateTime ?: Date(),
-                    updateFileMd5 = app.md5!!,
+                    updateFileMd5 = app.md5 ?: "-",
                     backupFilePath = doBackup(app.id!!),
                     state = UpdateState.Success
                 )
@@ -153,7 +153,7 @@ class UpdateHistoryService(
             id = idGenerator.next(),
             applicationId = app.id!!,
             updateTime = event.updateTime,
-            updateFileMd5 = app.md5!!,
+            updateFileMd5 = app.md5 ?: "-",
             state = UpdateState.Checking,
             backupFilePath = doBackup(app.id!!)
         )
