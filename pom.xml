@@ -16,7 +16,7 @@
     <properties>
         <java.version>11</java.version>
         <kotlin.version>1.9.22</kotlin.version>
-        <auth.version>1.2.20</auth.version>
+        <auth.version>1.2.24</auth.version>
         <spring-cloud.version>2021.0.8</spring-cloud.version>
         <docker-java.version>3.3.4</docker-java.version>
         <jsch.version>0.2.18</jsch.version>
