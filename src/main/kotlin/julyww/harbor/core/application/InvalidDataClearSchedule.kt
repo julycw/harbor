@@ -6,14 +6,14 @@ import julyww.harbor.persist.app.UpdateHistoryRepository
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
-@Component
+//@Component
 class InvalidDataClearSchedule(
     private val appManageService: AppManageService,
     private val dockerService: DockerService
 ) {
 
 
-    @Scheduled(cron = "0 0 0 * * ?")
+//    @Scheduled(cron = "0 0 0 * * ?")
     fun clear() {
         val appList = appManageService.list(
             AppQueryBean(
