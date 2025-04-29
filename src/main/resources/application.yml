@@ -21,6 +21,12 @@ spring:
     multipart:
       max-file-size: 200MB
       max-request-size: 200MB
+  boot:
+    admin:
+      context-path: /spring-admin
+      basic-auth:
+        username: ENC(OUqOvEe2svcQSFabr6BJz8yqGKinaawLzMmW1rtMBktyYtSq94HL5Ce2lY4v/z+2)
+        password: ENC(6AGEXqNhA3R7lt4/wlBipZYCAhcQ9Y0/jszJEhs4gaFYG9YXLWlOAfwCOzkf24Q9)
 eureka:
   instance:
     prefer-ip-address: true

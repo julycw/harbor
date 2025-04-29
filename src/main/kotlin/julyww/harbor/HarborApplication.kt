@@ -2,6 +2,7 @@ package julyww.harbor
 
 import cn.trustway.nb.util.HashUtil
 import com.ulisesbocchio.jasyptspringboot.annotation.EnableEncryptableProperties
+import de.codecentric.boot.admin.server.config.EnableAdminServer
 import julyww.harbor.core.certification.CertificationDTO
 import julyww.harbor.core.certification.CertificationService
 import julyww.harbor.core.certification.persist.CertificationType
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 @RestControllerAdvice
 @EnableScheduling
 @EnableFeignClients
+@EnableAdminServer
 @SpringBootApplication
 class HarborApplication(
     private val appRepository: AppRepository,
