@@ -22,12 +22,10 @@ class SpringAdminConfig {
     fun customHttpHeadersProvider(
         authServiceProvider: AuthServiceProvider
     ): HttpHeadersProvider {
-
-        val token = cache.get("token") {
-            authServiceProvider.getJwtToken("system", Duration.ofMinutes(2))
-        }
-
         return HttpHeadersProvider { instance: Instance? ->
+            val token = cache.get("token") {
+                authServiceProvider.getJwtToken("system", Duration.ofMinutes(2))
+            }
             val httpHeaders = HttpHeaders()
             httpHeaders.add("Authorization", "Bearer $token")
             httpHeaders
