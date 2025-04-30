@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class ActuatorConfig {
 
-    @Value("\${spring.servlet.context-path:/harbor}")
+    @Value("\${server.servlet.context-path:}")
     lateinit var contextPath: String
 
     @Value("\${management.endpoints.web.base-path:/actuator}")
@@ -31,7 +31,7 @@ class ActuatorConfig {
             listOf(
                 PathAuthenticationTable(
                     listOf("$contextPath$actuatorBasePath/**"),
-                    AuthenticationInfo.permission(setOf(Permissions.SUPREME_ALL))
+                    AuthenticationInfo.permission(setOf(Permissions.SYSTEM_ACTUATOR_MANAGE))
                 ),
                 PathAuthenticationTable(
                     listOf("$contextPath${springAdminBasePath}/**"),
