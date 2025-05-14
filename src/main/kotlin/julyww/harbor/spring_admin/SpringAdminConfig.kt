@@ -44,7 +44,7 @@ class SpringAdminConfig {
                 )
             )
 
-        return HttpHeadersProvider { instance: Instance? ->
+        return HttpHeadersProvider { instance: Instance ->
             val token = cache.get("token")
             val httpHeaders = HttpHeaders()
             httpHeaders.add("Authorization", "Bearer $token")
