@@ -25,12 +25,14 @@ spring:
     admin:
       context-path: /spring-admin
       monitor:
-        status-lifetime: 15000ms
-        status-interval: 10000ms
+        status-lifetime: 60000ms
+        status-interval: 60000ms
         default-retries: 3
       basic-auth:
         username: ENC(OUqOvEe2svcQSFabr6BJz8yqGKinaawLzMmW1rtMBktyYtSq94HL5Ce2lY4v/z+2)
         password: ENC(6AGEXqNhA3R7lt4/wlBipZYCAhcQ9Y0/jszJEhs4gaFYG9YXLWlOAfwCOzkf24Q9)
+      discovery:
+        enabled: false
 eureka:
   instance:
     prefer-ip-address: true

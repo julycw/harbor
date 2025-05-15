@@ -8,6 +8,7 @@ import de.codecentric.boot.admin.server.domain.entities.Instance
 import de.codecentric.boot.admin.server.web.client.HttpHeadersProvider
 import de.codecentric.boot.admin.server.web.client.InstanceExchangeFilterFunction
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
@@ -16,6 +17,7 @@ import java.util.Base64
 import java.util.concurrent.Executors
 
 
+@ConditionalOnProperty(prefix = "spring.boot.admin.discovery", value = ["enabled"], havingValue = "true")
 @Configuration
 class SpringAdminConfig {
 
