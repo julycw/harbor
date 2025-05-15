@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpHeaders
 import java.time.Duration
+import java.util.Base64
 import java.util.concurrent.Executors
 
 
@@ -45,9 +46,16 @@ class SpringAdminConfig {
             )
 
         return HttpHeadersProvider { instance: Instance ->
-            val token = cache.get("token")
+            val httpBasic = instance.registration.metadata["basic"]
+            val token = if (httpBasic == "true" || httpBasic == "1") {
+                val username = instance.registration.metadata["username"]
+                val password = instance.registration.metadata["password"]
+                "Basic ${Base64.getEncoder().encodeToString("$username:$password".toByteArray())}"
+            } else {
+                "Bearer ${cache.get("token")}"
+            }
             val httpHeaders = HttpHeaders()
-            httpHeaders.add("Authorization", "Bearer $token")
+            httpHeaders.add("Authorization", token)
             httpHeaders
         }
     }
