@@ -17,7 +17,7 @@ import java.util.Base64
 import java.util.concurrent.Executors
 
 
-@ConditionalOnProperty(prefix = "spring.boot.admin.discovery", value = ["enabled"], havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.boot.admin.server", value = ["enabled"], havingValue = "true")
 @Configuration
 class SpringAdminConfig {
 

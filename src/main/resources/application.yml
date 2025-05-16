@@ -4,6 +4,7 @@ server:
   servlet:
     context-path: /harbor
   shutdown: graceful
+  forward-headers-strategy: native
 spring:
   application:
     name: harbor
@@ -31,6 +32,8 @@ spring:
       basic-auth:
         username: ENC(OUqOvEe2svcQSFabr6BJz8yqGKinaawLzMmW1rtMBktyYtSq94HL5Ce2lY4v/z+2)
         password: ENC(6AGEXqNhA3R7lt4/wlBipZYCAhcQ9Y0/jszJEhs4gaFYG9YXLWlOAfwCOzkf24Q9)
+      server:
+        enabled: false
       discovery:
         enabled: false
 eureka:
