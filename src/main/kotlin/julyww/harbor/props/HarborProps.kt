@@ -18,4 +18,9 @@ class HarborProps {
     var deploymentBaseDir = "/app/home/"
 
     var updateFileDownloadUrlPrefix = "https://govfun.com:9990/deploy/"
+
+    var healthReportUrl = "https://govfun.com:9990/health-report"
+
+    var healthReportCertification: String = "default"
+
 }
