@@ -2,7 +2,6 @@ package julyww.harbor.spring_admin
 
 import cn.trustway.nb.common.auth.autoconfig.remote.ConfigServiceHelper
 import cn.trustway.nb.util.SSLUtil
-import cn.trustway.nb.util.SSLUtil.hostnameVerifier
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
 import com.google.common.cache.LoadingCache
@@ -17,6 +16,7 @@ import julyww.harbor.props.HarborProps
 import julyww.harbor.utils.CommonUtils
 import org.apache.http.impl.client.HttpClients
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
@@ -30,6 +30,7 @@ import java.time.Duration
 import java.util.Optional
 import java.util.concurrent.Executors
 
+@ConditionalOnBean(InstanceRepository::class)
 @ConditionalOnProperty(prefix = "spring.boot.admin.server", value = ["enabled"], havingValue = "true")
 @Component
 class CustomNotifier(
